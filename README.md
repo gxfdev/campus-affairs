@@ -110,16 +110,70 @@ docker compose down
 - 后端 API：http://localhost:8088
 - MySQL 端口：3307（外部访问）
 
-### 方式三：Docker Hub 镜像部署
+### 方式三：使用 ghcr.io 镜像一键部署
+
+无需克隆代码，直接拉取预构建镜像运行：
 
 ```bash
 # 拉取镜像
-docker pull gxfdev/campus-affairs-backend:latest
-docker pull gxfdev/campus-affairs-frontend:latest
+docker pull ghcr.io/gxfdev/campus-affairs/backend:latest
+docker pull ghcr.io/gxfdev/campus-affairs/frontend:latest
 
-# 使用 docker compose 启动
-docker compose up -d
+# 创建 docker-compose.prod.yml
+cat > docker-compose.prod.yml << 'EOF'
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: campus-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: campus_affairs
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - campus-net
+
+  backend:
+    image: ghcr.io/gxfdev/campus-affairs/backend:latest
+    container_name: campus-backend
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_affairs?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+    depends_on:
+      - mysql
+    networks:
+      - campus-net
+
+  frontend:
+    image: ghcr.io/gxfdev/campus-affairs/frontend:latest
+    container_name: campus-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - campus-net
+
+volumes:
+  mysql-data:
+
+networks:
+  campus-net:
+    driver: bridge
+EOF
+
+# 启动所有服务
+docker compose -f docker-compose.prod.yml up -d
 ```
+
+- 前端访问：http://localhost:80
+- 后端 API：http://localhost:8088
 
 ### 默认账号
 
