@@ -92,16 +92,34 @@
 **环境要求：** Docker + Docker Compose
 
 ```bash
+# 克隆项目
+git clone https://github.com/gxfdev/campus-affairs.git
+cd campus-affairs
+
 # 一键启动所有服务（MySQL + 后端 + 前端）
-docker-compose up -d
+docker compose up -d
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
+
+# 停止服务
+docker compose down
 ```
 
 - 前端访问：http://localhost:80
 - 后端 API：http://localhost:8088
 - MySQL 端口：3307（外部访问）
+
+### 方式三：Docker Hub 镜像部署
+
+```bash
+# 拉取镜像
+docker pull gxfdev/campus-affairs-backend:latest
+docker pull gxfdev/campus-affairs-frontend:latest
+
+# 使用 docker compose 启动
+docker compose up -d
+```
 
 ### 默认账号
 
@@ -143,6 +161,64 @@ docker-compose logs -f
 - **学生** - 提交请假/报修申请，查看公告，报名活动
 - **教师** - 审批请假，发布公告/活动
 - **管理员** - 所有权限，用户管理，报修处理，数据统计
+
+## 常见问题
+
+### 1. 后端启动报端口占用
+```bash
+# Windows 查找并终止占用 8088 端口的进程
+netstat -ano | findstr :8088
+taskkill /PID <进程ID> /F
+
+# Linux/Mac
+lsof -i :8088
+kill -9 <PID>
+```
+
+### 2. 数据库连接失败
+- 确认 MySQL 服务已启动
+- 检查 `application.yml` 中数据库用户名和密码是否正确
+- Docker 部署时确保 MySQL 容器已完全启动（约30秒）
+
+### 3. 前端请求后端 404
+- 确认后端服务已启动在 8088 端口
+- 本地开发时检查 `vite.config.js` 代理配置
+- Docker 部署时检查 nginx.conf 中 proxy_pass 地址
+
+### 4. 登录后提示"登录已过期"
+- 检查系统时间是否正确
+- JWT Token 有效期为 24 小时，过期需重新登录
+
+## 测试报告
+
+### 测试范围
+- 端口连通性测试（8088/3000）
+- 后端 API 接口测试（认证/请假/报修/公告/活动/用户管理）
+- 权限控制测试（学生/教师/管理员角色）
+- 前端页面交互测试
+- 前后端集成测试
+
+### 测试结果统计
+| 测试类别 | 用例数 | 通过 | 失败 | 通过率 |
+|----------|--------|------|------|--------|
+| 端口测试 | 2 | 2 | 0 | 100% |
+| 认证接口 | 7 | 7 | 0 | 100% |
+| 请假管理 | 4 | 4 | 0 | 100% |
+| 报修管理 | 3 | 3 | 0 | 100% |
+| 公告管理 | 2 | 2 | 0 | 100% |
+| 活动管理 | 3 | 3 | 0 | 100% |
+| 用户管理 | 1 | 1 | 0 | 100% |
+| 权限控制 | 4 | 4 | 0 | 100% |
+| 统计接口 | 2 | 2 | 0 | 100% |
+| 前端代理 | 1 | 1 | 0 | 100% |
+| **合计** | **29** | **29** | **0** | **100%** |
+
+### 已修复问题
+1. **[严重] 教师和学生密码MD5值错误** - init.sql 中密码哈希与后端加密逻辑不匹配，导致教师和学生无法登录
+2. **[严重] 前端响应拦截器字段名不匹配** - 后端返回 `message` 字段，前端使用 `msg`，导致错误信息无法正确显示
+3. **[严重] 前端分页参数不匹配** - 前端发送 `current/size`，后端期望 `pageNum/pageSize`，导致分页功能失效
+4. **[中等] 活动报名状态校验过严** - 仅允许"进行中"活动报名，"未开始"活动无法报名
+5. **[轻微] BusinessException 默认错误码 500** - 业务异常不应返回 500（服务器错误），改为 400（客户端错误）
 
 ## 许可证
 
