@@ -2,8 +2,12 @@ package com.xiaou.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xiaou.common.Result;
+import com.xiaou.entity.Counselor;
 import com.xiaou.entity.LeaveRequest;
+import com.xiaou.entity.User;
+import com.xiaou.service.CounselorService;
 import com.xiaou.service.LeaveRequestService;
+import com.xiaou.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +25,12 @@ public class LeaveRequestController {
     
     @Autowired
     private LeaveRequestService leaveRequestService;
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private CounselorService counselorService;
     
     /**
      * 提交请假申请
@@ -58,12 +68,24 @@ public class LeaveRequestController {
             studentId = currentUserId;
         }
         
+        // 辅导员只能查看自己负责的学生的请假申请
+        if ("counselor".equals(role)) {
+            // 获取辅导员信息
+            Counselor counselor = counselorService.getByUserId(currentUserId);
+            if (counselor != null) {
+                // 通过service层筛选该辅导员负责的学生
+                Page<LeaveRequest> page = leaveRequestService.getLeaveRequestByCounselor(
+                    pageNum, pageSize, counselor.getId(), status);
+                return Result.success(page);
+            }
+        }
+        
         Page<LeaveRequest> page = leaveRequestService.getLeaveRequestPage(pageNum, pageSize, studentId, status);
         return Result.success(page);
     }
     
     /**
-     * 审批请假申请
+     * 审批请假申请 - 只有该学生的专属辅导员才能审批
      */
     @PostMapping("/approve")
     public Result<Void> approveLeaveRequest(@RequestBody ApprovalRequest request, 
@@ -71,9 +93,26 @@ public class LeaveRequestController {
         Long approverId = (Long) httpRequest.getAttribute("userId");
         String role = (String) httpRequest.getAttribute("role");
         
-        // 只有教师和管理员可以审批
-        if (!"teacher".equals(role) && !"admin".equals(role)) {
-            return Result.error(403, "权限不足");
+        // 只有辅导员可以审批请假
+        if (!"counselor".equals(role)) {
+            return Result.error(403, "只有辅导员可以审批请假申请");
+        }
+        
+        // 获取请假申请
+        LeaveRequest leaveRequest = leaveRequestService.getById(request.getId());
+        if (leaveRequest == null) {
+            return Result.error(404, "请假申请不存在");
+        }
+        
+        // 获取请假学生信息
+        User student = userService.getById(leaveRequest.getStudentId());
+        if (student == null) {
+            return Result.error(404, "学生不存在");
+        }
+        
+        // 验证审批人是否为该学生的专属辅导员
+        if (!approverId.equals(student.getCounselorId())) {
+            return Result.error(403, "您没有权限审批该学生的请假申请，只有该学生的专属辅导员才能审批");
         }
         
         leaveRequestService.approveLeaveRequest(request.getId(), approverId, 
@@ -81,6 +120,32 @@ public class LeaveRequestController {
         return Result.success();
     }
     
+    /**
+     * 辅导员查询自己负责学生的请假列表
+     */
+    @GetMapping("/counselor/list")
+    public Result<Page<LeaveRequest>> getCounselorLeaveList(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) Integer status,
+            HttpServletRequest request) {
+        Long currentUserId = (Long) request.getAttribute("userId");
+        String role = (String) request.getAttribute("role");
+        
+        if (!"counselor".equals(role)) {
+            return Result.error(403, "只有辅导员可以使用此接口");
+        }
+        
+        Counselor counselor = counselorService.getByUserId(currentUserId);
+        if (counselor == null) {
+            return Result.error(403, "辅导员信息不存在");
+        }
+        
+        Page<LeaveRequest> page = leaveRequestService.getLeaveRequestByCounselor(
+            pageNum, pageSize, counselor.getId(), status);
+        return Result.success(page);
+    }
+
     /**
      * 获取请假统计数据
      */
@@ -105,7 +170,6 @@ public class LeaveRequestController {
         private Integer status;
         private String comment;
         
-        // getter和setter
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
         public Integer getStatus() { return status; }

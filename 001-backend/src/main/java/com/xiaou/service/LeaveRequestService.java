@@ -11,7 +11,7 @@ import com.xiaou.entity.LeaveRequest;
 public interface LeaveRequestService extends IService<LeaveRequest> {
     
     /**
-     * 学生提交请假申请
+     * 提交请假申请
      */
     void submitLeaveRequest(LeaveRequest leaveRequest);
     
@@ -24,6 +24,11 @@ public interface LeaveRequestService extends IService<LeaveRequest> {
      * 分页查询请假申请
      */
     Page<LeaveRequest> getLeaveRequestPage(int pageNum, int pageSize, Long studentId, Integer status);
+    
+    /**
+     * 辅导员查询自己负责的学生的请假申请
+     */
+    Page<LeaveRequest> getLeaveRequestByCounselor(int pageNum, int pageSize, Long counselorId, Integer status);
     
     /**
      * 获取请假统计数据

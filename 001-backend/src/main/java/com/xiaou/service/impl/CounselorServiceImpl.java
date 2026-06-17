@@ -37,4 +37,11 @@ public class CounselorServiceImpl extends ServiceImpl<CounselorMapper, Counselor
         });
         return result;
     }
+
+    @Override
+    public Counselor getByUserId(Long userId) {
+        LambdaQueryWrapper<Counselor> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Counselor::getUserId, userId);
+        return getOne(wrapper);
+    }
 }

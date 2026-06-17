@@ -76,13 +76,13 @@ const router = createRouter({
           path: 'score',
           name: 'Score',
           component: () => import('@/views/Score/Index.vue'),
-          meta: { title: '成绩查询', icon: 'Trophy', roles: ['admin', 'teacher', 'student'] }
+          meta: { title: '成绩查询', icon: 'Trophy', roles: ['admin', 'teacher', 'student', 'counselor'] }
         },
         {
           path: 'course-selection',
           name: 'CourseSelection',
           component: () => import('@/views/CourseSelection/Index.vue'),
-          meta: { title: '选课中心', icon: 'ShoppingCart', roles: ['student', 'admin'] }
+          meta: { title: '选课中心', icon: 'ShoppingCart', roles: ['student', 'admin', 'counselor'] }
         },
         {
           path: 'dormitory',
@@ -95,6 +95,12 @@ const router = createRouter({
           name: 'Counselor',
           component: () => import('@/views/Counselor/Index.vue'),
           meta: { title: '辅导员管理', icon: 'Avatar', roles: ['admin'] }
+        },
+        {
+          path: 'counselor-panel',
+          name: 'CounselorPanel',
+          component: () => import('@/views/Counselor/Panel.vue'),
+          meta: { title: '辅导员工作台', icon: 'Avatar', roles: ['counselor'] }
         },
         {
           path: 'profile',

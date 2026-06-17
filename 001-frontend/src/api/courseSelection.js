@@ -20,12 +20,22 @@ export const getMyCourses = () => {
   return request.get('/course-selection/my-courses')
 }
 
-// 添加选课（管理员）
+// 辅导员开放选课
+export const openCourseSelection = (courseId) => {
+  return request.post(`/course-selection/open/${courseId}`)
+}
+
+// 辅导员关闭选课
+export const closeCourseSelection = (courseId) => {
+  return request.post(`/course-selection/close/${courseId}`)
+}
+
+// 添加选课（管理员/辅导员）
 export const addCourseSelection = (data) => {
   return request.post('/course-selection/add', data)
 }
 
-// 更新选课（管理员）
+// 更新选课（管理员/辅导员）
 export const updateCourseSelection = (data) => {
   return request.put('/course-selection/update', data)
 }

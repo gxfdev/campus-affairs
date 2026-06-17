@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/dormitory")
@@ -29,8 +28,9 @@ public class DormitoryController {
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String building,
             @RequestParam(required = false) String gender,
-            @RequestParam(required = false) String status) {
-        return Result.success(dormitoryService.getDormitoryPage(pageNum, pageSize, building, gender, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String college) {
+        return Result.success(dormitoryService.getDormitoryPage(pageNum, pageSize, building, gender, status, college));
     }
 
     @PostMapping("/select/{dormitoryId}")

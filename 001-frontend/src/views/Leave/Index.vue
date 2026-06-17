@@ -169,7 +169,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getLeaveList, applyLeave, approveLeave } from '@/api/leave'
+import { getLeaveList, getLeaveRequests, applyLeave, approveLeaveRequest } from '@/api/leave'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const userStore = useUserStore()
@@ -213,10 +213,16 @@ const fetchLeaveList = async () => {
       size: pagination.size,
       ...searchForm
     }
-    const res = await getLeaveList(params)
+    // 辅导员使用专用接口
+    let res
+    if (userInfo.value?.role === 'counselor') {
+      res = await getLeaveRequests({ pageNum: pagination.current, pageSize: pagination.size, ...searchForm })
+    } else {
+      res = await getLeaveList(params)
+    }
     if (res.code === 200) {
-      tableData.value = res.data.records || []
-      pagination.total = res.data.total || 0
+      tableData.value = res.data.records || res.data?.records || []
+      pagination.total = res.data.total || res.data?.total || 0
     }
   } catch (error) {
     console.error('获取请假列表失败:', error)
@@ -265,7 +271,7 @@ const handleApprove = async (id, status) => {
     type: 'warning'
   }).then(async () => {
     try {
-      const res = await approveLeave({ id, status })
+      const res = await approveLeaveRequest({ id, status })
       if (res.code === 200) {
         ElMessage.success(`${text}成功`)
         fetchLeaveList()

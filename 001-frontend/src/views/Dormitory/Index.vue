@@ -28,6 +28,9 @@
             <el-select v-model="filter.building" placeholder="全部" clearable style="width: 120px">
               <el-option label="1号楼" value="1号楼" />
               <el-option label="2号楼" value="2号楼" />
+              <el-option label="3号楼" value="3号楼" />
+              <el-option label="4号楼" value="4号楼" />
+              <el-option label="5号楼" value="5号楼" />
             </el-select>
           </el-form-item>
           <el-form-item label="性别">
@@ -35,6 +38,9 @@
               <el-option label="男" value="男" />
               <el-option label="女" value="女" />
             </el-select>
+          </el-form-item>
+          <el-form-item label="学院" v-if="isAdmin">
+            <el-input v-model="filter.college" placeholder="学院" clearable style="width: 140px" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="fetchDormitories">查询</el-button>
@@ -111,13 +117,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo)
 const isStudent = computed(() => userInfo.value?.role === 'student')
+const isAdmin = computed(() => userInfo.value?.role === 'admin')
 const isFreshman = computed(() => userInfo.value?.grade === 1)
 
 const dormList = ref([])
 const loading = ref(false)
 const showMyDorm = ref(false)
 const myDormInfo = ref(null)
-const filter = reactive({ building: '', gender: '' })
+const filter = reactive({ building: '', gender: '', college: '' })
 const pagination = reactive({ current: 1, size: 12, total: 0 })
 
 const fetchDormitories = async () => {

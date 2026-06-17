@@ -17,6 +17,7 @@ public class Dormitory implements Serializable {
     private Integer capacity;
     private Integer currentCount;
     private String gender;
+    private String college;
     private String status;
     
     @TableField(fill = FieldFill.INSERT)

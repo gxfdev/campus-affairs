@@ -25,7 +25,7 @@ public class DormitoryServiceImpl extends ServiceImpl<DormitoryMapper, Dormitory
     private UserMapper userMapper;
 
     @Override
-    public Page<Dormitory> getDormitoryPage(int pageNum, int pageSize, String building, String gender, String status) {
+    public Page<Dormitory> getDormitoryPage(int pageNum, int pageSize, String building, String gender, String status, String college) {
         Page<Dormitory> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Dormitory> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(building)) {
@@ -36,6 +36,9 @@ public class DormitoryServiceImpl extends ServiceImpl<DormitoryMapper, Dormitory
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(Dormitory::getStatus, status);
+        }
+        if (StringUtils.hasText(college)) {
+            wrapper.eq(Dormitory::getCollege, college);
         }
         wrapper.orderByAsc(Dormitory::getBuilding, Dormitory::getRoomNumber);
         return this.page(page, wrapper);
@@ -64,7 +67,9 @@ public class DormitoryServiceImpl extends ServiceImpl<DormitoryMapper, Dormitory
             throw new RuntimeException("仅限大一新生选择宿舍");
         }
         // 检查性别匹配
-        String studentGender = student.getRealName() != null ? "男" : "男"; // 简化处理，实际应从用户表获取性别
+        if (student.getGender() != null && !student.getGender().equals(dormitory.getGender())) {
+            throw new RuntimeException("宿舍性别与您不匹配");
+        }
         // 创建选择记录
         DormitorySelection selection = new DormitorySelection();
         selection.setDormitoryId(dormitoryId);

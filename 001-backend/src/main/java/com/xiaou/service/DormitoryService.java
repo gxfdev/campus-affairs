@@ -5,6 +5,6 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.xiaou.entity.Dormitory;
 
 public interface DormitoryService extends IService<Dormitory> {
-    Page<Dormitory> getDormitoryPage(int pageNum, int pageSize, String building, String gender, String status);
+    Page<Dormitory> getDormitoryPage(int pageNum, int pageSize, String building, String gender, String status, String college);
     void selectDormitory(Long dormitoryId, Long studentId);
 }

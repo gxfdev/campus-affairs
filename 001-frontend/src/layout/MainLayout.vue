@@ -226,7 +226,8 @@ const getRoleName = (role) => {
   const roleMap = {
     'admin': '管理员',
     'teacher': '教师',
-    'student': '学生'
+    'student': '学生',
+    'counselor': '辅导员'
   }
   return roleMap[role] || '用户'
 }

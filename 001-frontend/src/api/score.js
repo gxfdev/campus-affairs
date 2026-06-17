@@ -5,6 +5,11 @@ export const getScoreList = (params) => {
   return request.get('/score/list', { params })
 }
 
+// 辅导员查询自己负责学生的成绩
+export const getScoreByCounselor = (params) => {
+  return request.get('/score/counselor/list', { params })
+}
+
 // 添加成绩
 export const addScore = (data) => {
   return request.post('/score/add', data)

@@ -10,6 +10,26 @@ export const getScheduleByClass = (className, semester) => {
   return request.get(`/course-schedule/class/${className}`, { params: { semester } })
 }
 
+// 学生获取自己的课程表
+export const getMySchedule = (semester) => {
+  return request.get('/course-schedule/my-schedule', { params: { semester } })
+}
+
+// 获取学院列表
+export const getColleges = () => {
+  return request.get('/course-schedule/colleges')
+}
+
+// 获取专业列表
+export const getMajors = (college) => {
+  return request.get('/course-schedule/majors', { params: { college } })
+}
+
+// 获取班级列表
+export const getClasses = (params) => {
+  return request.get('/course-schedule/classes', { params })
+}
+
 // 添加课程
 export const addCourseSchedule = (data) => {
   return request.post('/course-schedule/add', data)

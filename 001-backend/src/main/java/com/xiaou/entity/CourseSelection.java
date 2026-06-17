@@ -25,7 +25,11 @@ public class CourseSelection implements Serializable {
     private Integer periodStart;
     private Integer periodEnd;
     private String status;
-    
+    private String college;
+    private Integer grade;
+    private Integer isOpen;
+    private Long openedBy;
+
     @TableField(fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime createTime;

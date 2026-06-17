@@ -72,7 +72,27 @@ public class User implements Serializable {
      * 学院
      */
     private String college;
-    
+
+    /**
+     * 专业
+     */
+    private String major;
+
+    /**
+     * 性别
+     */
+    private String gender;
+
+    /**
+     * 专属辅导员ID
+     */
+    private Long counselorId;
+
+    /**
+     * 入学年份
+     */
+    private Integer enrollmentYear;
+
     /**
      * 创建时间
      */
