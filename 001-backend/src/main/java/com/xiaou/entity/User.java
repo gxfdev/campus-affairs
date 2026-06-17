@@ -59,6 +59,21 @@ public class User implements Serializable {
     private String studentNo;
     
     /**
+     * 班级名称
+     */
+    private String className;
+    
+    /**
+     * 年级（1-4对应大一到大四）
+     */
+    private Integer grade;
+    
+    /**
+     * 学院
+     */
+    private String college;
+    
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)

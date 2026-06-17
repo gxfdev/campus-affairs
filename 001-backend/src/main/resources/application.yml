@@ -38,6 +38,17 @@ mybatis-plus:
       # 主键类型
       id-type: auto
 
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+# 文件存储配置
+file:
+  upload-path: ./uploads
+  access-path: /uploads
+
 # 日志配置
 logging:
   level:

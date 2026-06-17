@@ -63,6 +63,21 @@
               <el-tag v-else type="primary" class="role-tag">学生</el-tag>
             </template>
           </el-table-column>
+          <el-table-column prop="className" label="班级" width="120" align="center">
+            <template #default="{ row }">
+              {{ row.className || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="grade" label="年级" width="80" align="center">
+            <template #default="{ row }">
+              {{ row.grade ? gradeMap[row.grade] : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="college" label="学院" min-width="150" align="center">
+            <template #default="{ row }">
+              {{ row.college || '-' }}
+            </template>
+          </el-table-column>
           <el-table-column prop="phone" label="手机号" width="130" align="center" />
           <el-table-column prop="email" label="邮箱" min-width="200" align="center" />
           <el-table-column prop="createTime" label="创建时间" width="180" align="center" />
@@ -155,6 +170,20 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="userForm.email" placeholder="请输入邮箱" class="custom-input" />
         </el-form-item>
+        <el-form-item label="班级" v-if="userForm.role === 'student'">
+          <el-input v-model="userForm.className" placeholder="如：计科2401" class="custom-input" />
+        </el-form-item>
+        <el-form-item label="年级" v-if="userForm.role === 'student'">
+          <el-select v-model="userForm.grade" placeholder="请选择年级" style="width: 100%" class="custom-select">
+            <el-option label="大一" :value="1" />
+            <el-option label="大二" :value="2" />
+            <el-option label="大三" :value="3" />
+            <el-option label="大四" :value="4" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="学院" v-if="userForm.role === 'student' || userForm.role === 'teacher'">
+          <el-input v-model="userForm.college" placeholder="如：计算机学院" class="custom-input" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -197,13 +226,18 @@ const pagination = reactive({
 
 const tableData = ref([])
 
+const gradeMap = { 1: '大一', 2: '大二', 3: '大三', 4: '大四' }
+
 const userForm = reactive({
   username: '',
   password: '',
   realName: '',
   role: 'student',
   phone: '',
-  email: ''
+  email: '',
+  className: '',
+  grade: null,
+  college: ''
 })
 
 const userRules = {
@@ -271,7 +305,10 @@ const handleSubmit = async () => {
             realName: userForm.realName,
             role: userForm.role,
             phone: userForm.phone,
-            email: userForm.email
+            email: userForm.email,
+            className: userForm.className,
+            grade: userForm.grade,
+            college: userForm.college
           })
         } else {
           res = await addUser(userForm)
@@ -299,7 +336,10 @@ const handleEdit = (row) => {
     realName: row.realName,
     role: row.role,
     phone: row.phone,
-    email: row.email
+    email: row.email,
+    className: row.className || '',
+    grade: row.grade || null,
+    college: row.college || ''
   })
   showAddDialog.value = true
 }

@@ -28,6 +28,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_affairs?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
+      FILE_UPLOAD_PATH: /app/uploads
+    volumes:
+      - upload-data:/app/uploads
     depends_on:
       - mysql
     networks:
@@ -47,6 +50,7 @@ services:
 
 volumes:
   mysql-data:
+  upload-data:
 
 networks:
   campus-net:

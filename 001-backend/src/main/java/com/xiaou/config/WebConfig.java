@@ -1,9 +1,11 @@
 package com.xiaou.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -15,6 +17,9 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Autowired
     private JwtInterceptor jwtInterceptor;
+
+    @Value("${file.upload-path:./uploads}")
+    private String uploadPath;
     
     /**
      * 配置拦截器
@@ -27,6 +32,15 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/auth/login",
                         "/api/auth/register"
                 );
+    }
+
+    /**
+     * 配置静态资源映射（上传文件访问）
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + uploadPath + "/");
     }
     
     /**

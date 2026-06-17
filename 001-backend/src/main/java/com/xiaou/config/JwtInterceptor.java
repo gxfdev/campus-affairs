@@ -63,7 +63,8 @@ public class JwtInterceptor implements HandlerInterceptor {
     
     private void sendError(HttpServletResponse response, int code, String message) throws Exception {
         response.setContentType("application/json;charset=utf-8");
-        response.setStatus(code);
+        // 统一返回HTTP 200，通过业务code区分错误类型，让前端axios能正确解析
+        response.setStatus(200);
         Result<?> result = Result.error(code, message);
         response.getWriter().write(JSON.toJSONString(result));
     }

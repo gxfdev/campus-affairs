@@ -62,11 +62,37 @@
         
         <div class="header-right">
           <!-- 通知图标 -->
-          <el-badge :value="3" :max="99" class="notification-badge">
-            <el-button class="notification-btn" circle>
+          <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0" class="notification-badge">
+            <el-button class="notification-btn" circle @click="showNotifications">
               <el-icon :size="18"><Bell /></el-icon>
             </el-button>
           </el-badge>
+          
+          <!-- 通知弹窗 -->
+          <el-popover
+            placement="bottom"
+            :width="320"
+            trigger="click"
+            v-model:visible="showNotifPopover"
+          >
+            <template #reference>
+              <span style="display:none"></span>
+            </template>
+            <div class="notification-popover">
+              <div class="notif-header">
+                <span class="notif-title">消息通知</span>
+                <el-button type="primary" link size="small" @click="handleMarkAllRead" v-if="unreadCount > 0">全部已读</el-button>
+              </div>
+              <div class="notif-list" v-if="notifications.length > 0">
+                <div v-for="item in notifications" :key="item.id" class="notif-item" :class="{ unread: item.isRead === 0 }" @click="handleNotifClick(item)">
+                  <div class="notif-item-title">{{ item.title }}</div>
+                  <div class="notif-item-content">{{ item.content }}</div>
+                  <div class="notif-item-time">{{ item.createTime }}</div>
+                </div>
+              </div>
+              <div v-else class="notif-empty">暂无未读消息</div>
+            </div>
+          </el-popover>
           
           <!-- 用户信息 -->
           <el-dropdown @command="handleCommand" class="user-dropdown">
@@ -109,10 +135,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { getUnreadCount, getUnreadNotifications, markAsRead, markAllAsRead } from '@/api/notification'
 
 const router = useRouter()
 const route = useRoute()
@@ -120,6 +147,60 @@ const userStore = useUserStore()
 
 const isCollapse = ref(false)
 const userInfo = computed(() => userStore.userInfo)
+const unreadCount = ref(0)
+const notifications = ref([])
+const showNotifPopover = ref(false)
+let notifTimer = null
+
+// 获取未读通知数量
+const fetchUnreadCount = async () => {
+  try {
+    const res = await getUnreadCount()
+    if (res.code === 200) {
+      unreadCount.value = res.data || 0
+    }
+  } catch (e) {
+    // 静默处理
+  }
+}
+
+// 显示通知弹窗
+const showNotifications = async () => {
+  showNotifPopover.value = true
+  try {
+    const res = await getUnreadNotifications()
+    if (res.code === 200) {
+      notifications.value = res.data || []
+    }
+  } catch (e) {
+    // 静默处理
+  }
+}
+
+// 点击通知
+const handleNotifClick = async (item) => {
+  if (item.isRead === 0) {
+    try {
+      await markAsRead(item.id)
+      item.isRead = 1
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    } catch (e) {
+      // 静默处理
+    }
+  }
+}
+
+// 全部已读
+const handleMarkAllRead = async () => {
+  try {
+    await markAllAsRead()
+    notifications.value.forEach(n => n.isRead = 1)
+    unreadCount.value = 0
+    ElMessage.success('已全部标记为已读')
+  } catch (e) {
+    // 静默处理
+  }
+}
 
 // 获取菜单路由
 const menuRoutes = computed(() => {
@@ -129,7 +210,6 @@ const menuRoutes = computed(() => {
 // 当前激活的菜单
 const activeMenu = computed(() => {
   const { path } = route
-  // 如果是详情页，高亮对应的列表页
   if (path.includes('/notice/')) return '/notice'
   if (path.includes('/activity/')) return '/activity'
   return path
@@ -175,6 +255,15 @@ const handleCommand = (command) => {
 
 onMounted(() => {
   userStore.initUserInfo()
+  fetchUnreadCount()
+  // 每30秒轮询一次未读数量
+  notifTimer = setInterval(fetchUnreadCount, 30000)
+})
+
+onUnmounted(() => {
+  if (notifTimer) {
+    clearInterval(notifTimer)
+  }
 })
 </script>
 
@@ -350,6 +439,76 @@ onMounted(() => {
   color: #2E7D32 !important;
 }
 
+/* 通知弹窗 */
+.notification-popover {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+}
+
+.notif-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2C3E50;
+}
+
+.notif-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notif-item {
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notif-item:hover {
+  background: #f5f7fa;
+}
+
+.notif-item.unread {
+  background: #ecf5ff;
+}
+
+.notif-item.unread:hover {
+  background: #d9ecff;
+}
+
+.notif-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2C3E50;
+  margin-bottom: 4px;
+}
+
+.notif-item-content {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.notif-item-time {
+  font-size: 11px;
+  color: #C0C4CC;
+}
+
+.notif-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
 /* 用户信息 */
 .user-dropdown {
   cursor: pointer;
@@ -428,10 +587,33 @@ onMounted(() => {
   
   .header {
     padding: 0 16px;
+    height: 60px;
+  }
+  
+  .user-detail {
+    display: none;
+  }
+  
+  .dropdown-icon {
+    display: none;
   }
   
   .main-content {
     padding: 16px;
+  }
+  
+  .breadcrumb {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+  
+  .notification-badge {
+    margin-right: 4px;
   }
 }
 </style>

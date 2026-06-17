@@ -13,13 +13,20 @@
       <el-col :xs="24" :lg="8">
         <el-card class="profile-card">
           <div class="user-info">
-            <div class="avatar-container">
-              <el-avatar :size="100" class="avatar">
-                {{ userInfo?.username?.charAt(0) }}
+            <div class="avatar-container" @click="triggerUpload">
+              <el-avatar :size="100" class="avatar" :src="avatarUrl">
+                <template v-if="!avatarUrl">{{ userInfo?.username?.charAt(0) }}</template>
               </el-avatar>
               <div class="avatar-badge">
                 <el-icon><Camera /></el-icon>
               </div>
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                style="display: none"
+                @change="handleFileChange"
+              />
             </div>
             <h3 class="username">{{ userInfo?.username }}</h3>
             <el-tag :type="getRoleType(userInfo?.role)" size="large" class="role-tag">
@@ -140,6 +147,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser } from '@/api/user'
 import { changePassword } from '@/api/auth'
+import { uploadAvatar } from '@/api/upload'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
@@ -149,6 +157,14 @@ const activeTab = ref('info')
 const submitting = ref(false)
 const infoFormRef = ref(null)
 const passwordFormRef = ref(null)
+const fileInput = ref(null)
+const avatarUrl = computed(() => {
+  const avatar = userInfo.value?.avatar
+  if (!avatar) return ''
+  // 相对路径（如 /uploads/avatar/xxx.jpg）通过Vite/Nginx代理直接访问
+  // 完整URL（如 https://...）直接使用
+  return avatar
+})
 
 const infoForm = reactive({
   realName: '',
@@ -197,6 +213,48 @@ const passwordRules = {
   ]
 }
 
+// 触发文件上传
+const triggerUpload = () => {
+  fileInput.value?.click()
+}
+
+// 处理文件选择
+const handleFileChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  // 检查文件类型
+  const validTypes = ['image/jpeg', 'image/png', 'image/jpg']
+  if (!validTypes.includes(file.type)) {
+    ElMessage.error('仅支持JPG和PNG格式的图片')
+    return
+  }
+
+  // 检查文件大小（5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过5MB')
+    return
+  }
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await uploadAvatar(formData)
+    if (res.code === 200) {
+      ElMessage.success('头像上传成功')
+      // 重新获取用户信息
+      await userStore.fetchUserInfo()
+    } else {
+      ElMessage.error(res.message || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error('头像上传失败')
+  }
+
+  // 清空input，允许重复选择同一文件
+  event.target.value = ''
+}
+
 // 获取角色类型
 const getRoleType = (role) => {
   if (role === 'admin') return 'danger'
@@ -226,7 +284,6 @@ const handleUpdateInfo = async () => {
         
         if (res.code === 200) {
           ElMessage.success('更新成功')
-          // 重新获取用户信息
           await userStore.fetchUserInfo()
         }
       } catch (error) {
@@ -253,9 +310,7 @@ const handleChangePassword = async () => {
         
         if (res.code === 200) {
           ElMessage.success('密码修改成功，请重新登录')
-          // 重置表单
           passwordFormRef.value.resetFields()
-          // 退出登录
           setTimeout(() => {
             userStore.logout()
           }, 1500)

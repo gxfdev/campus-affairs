@@ -47,8 +47,11 @@ public class NoticeController {
     public Result<Page<Notice>> getNoticeList(@RequestParam(defaultValue = "1") int pageNum,
                                               @RequestParam(defaultValue = "10") int pageSize,
                                               @RequestParam(required = false) String category,
-                                              @RequestParam(required = false) String keyword) {
-        Page<Notice> page = noticeService.getNoticePage(pageNum, pageSize, category, keyword);
+                                              @RequestParam(required = false) String keyword,
+                                              @RequestParam(required = false) String title) {
+        // 兼容前端传title参数
+        String searchKeyword = keyword != null ? keyword : title;
+        Page<Notice> page = noticeService.getNoticePage(pageNum, pageSize, category, searchKeyword);
         return Result.success(page);
     }
     

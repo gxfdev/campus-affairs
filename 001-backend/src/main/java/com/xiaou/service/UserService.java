@@ -31,6 +31,11 @@ public interface UserService extends IService<User> {
     Page<User> getUserPage(int pageNum, int pageSize, String keyword);
     
     /**
+     * 分页查询用户列表（支持角色筛选）
+     */
+    Page<User> getUserPage(int pageNum, int pageSize, String keyword, String role);
+    
+    /**
      * 修改密码
      */
     void changePassword(Long userId, String oldPassword, String newPassword);

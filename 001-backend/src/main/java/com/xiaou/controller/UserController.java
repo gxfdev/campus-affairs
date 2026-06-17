@@ -29,14 +29,18 @@ public class UserController {
     public Result<Page<User>> getUserList(@RequestParam(defaultValue = "1") int pageNum,
                                           @RequestParam(defaultValue = "10") int pageSize,
                                           @RequestParam(required = false) String keyword,
+                                          @RequestParam(required = false) String role,
+                                          @RequestParam(required = false) String username,
                                           HttpServletRequest request) {
         // 检查权限（只有管理员可以查看用户列表）
-        String role = (String) request.getAttribute("role");
-        if (!"admin".equals(role)) {
+        String currentUserRole = (String) request.getAttribute("role");
+        if (!"admin".equals(currentUserRole)) {
             return Result.error(403, "权限不足");
         }
         
-        Page<User> page = userService.getUserPage(pageNum, pageSize, keyword);
+        // 兼容前端传username参数
+        String searchKeyword = keyword != null ? keyword : username;
+        Page<User> page = userService.getUserPage(pageNum, pageSize, searchKeyword, role);
         // 清除密码字段
         page.getRecords().forEach(user -> user.setPassword(null));
         return Result.success(page);

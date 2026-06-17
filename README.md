@@ -13,11 +13,18 @@
 
 ## 功能模块
 
-- **用户管理** - 注册/登录、JWT认证、角色权限控制（管理员/教师/学生）
+- **用户管理** - 注册/登录、JWT认证、角色权限控制（管理员/教师/学生）、班级/年级/学院管理
 - **请假管理** - 学生提交请假、教师/管理员审批、请假统计
 - **报修管理** - 学生提交报修、管理员处理、状态跟踪、报修统计
 - **公告管理** - 发布公告、分类管理、浏览统计、置顶功能
 - **活动管理** - 发布活动、学生报名、人数限制、活动状态管理
+- **课程表管理** - 按班级区分课表、支持不同班级显示对应课程安排
+- **成绩查询** - 学生查看个人成绩、学分统计、平均分计算
+- **选课系统** - 公选课抢课、体育课抢课、选课进度实时显示
+- **宿舍选择** - 大一新生宿舍选择、按楼栋/性别筛选、实时床位显示
+- **辅导员管理** - 辅导员信息管理、学院关联、按年级划分
+- **消息通知** - 未读消息实时提醒、通知列表、标记已读
+- **头像上传** - 支持JPG/PNG格式、5MB大小限制、实时预览
 
 ## 项目结构
 
@@ -177,11 +184,31 @@ docker compose -f docker-compose.prod.yml up -d
 
 ### 默认账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | admin | admin123 |
-| 教师 | teacher001 | teacher123 |
-| 学生 | student001 | student123 |
+| 角色 | 用户名 | 密码 | 真实姓名 | 学号/工号 | 手机号 | 邮箱 |
+|------|--------|------|----------|-----------|--------|------|
+| 管理员 | admin | admin123 | 系统管理员 | ADMIN001 | 13800000000 | admin@campus.edu |
+| 教师 | teacher001 | teacher123 | 张老师 | T001 | 13800000001 | zhang@campus.edu |
+| 学生 | student001 | student123 | 李小明 | 2024001 | 13800000002 | li@campus.edu |
+| 学生 | student002 | student123 | 王小红 | 2024002 | 13800000003 | wang@campus.edu |
+
+### 角色权限说明
+
+| 功能模块 | 管理员 (admin) | 教师 (teacher) | 学生 (student) |
+|----------|---------------|----------------|-----------------|
+| 仪表盘 | 查看全部统计数据 | 查看统计数据 | 查看个人统计 |
+| 请假管理 | 查看所有请假、审批请假 | 查看所有请假、审批请假 | 提交请假、查看自己的请假 |
+| 报修管理 | 查看所有报修、处理报修 | 查看报修列表 | 提交报修、查看自己的报修 |
+| 公告管理 | 发布/编辑/删除公告 | 发布/编辑公告 | 查看公告 |
+| 活动管理 | 发布/编辑/删除活动 | 发布/编辑活动 | 报名活动、查看活动 |
+| 课程表 | 查看所有班级课表、添加课程 | 查看所有班级课表 | 查看本班课表 |
+| 成绩查询 | 查看所有成绩、录入成绩 | 查看所有成绩、录入成绩 | 查看个人成绩 |
+| 选课中心 | 管理选课 | 查看选课 | 公选课/体育课抢课 |
+| 宿舍选择 | 管理宿舍 | 无权限 | 大一新生选宿舍 |
+| 辅导员管理 | 管理辅导员 | 查看辅导员 | 查看本学院辅导员 |
+| 消息通知 | 查看所有通知 | 查看通知 | 查看个人通知 |
+| 用户管理 | 查看所有用户、添加/编辑用户 | 无权限 | 无权限 |
+| 系统设置 | 访问系统设置页面 | 无权限 | 无权限 |
+| 个人中心 | 修改个人信息、修改密码、上传头像 | 修改个人信息、修改密码、上传头像 | 修改个人信息、修改密码、上传头像 |
 
 ## API 接口
 
@@ -189,26 +216,77 @@ docker compose -f docker-compose.prod.yml up -d
 - `POST /api/auth/login` - 用户登录
 - `POST /api/auth/register` - 用户注册
 - `GET /api/auth/userinfo` - 获取当前用户信息
+- `POST /api/auth/change-password` - 修改密码
 
 ### 请假管理
 - `POST /api/leave/apply` - 提交请假申请
 - `GET /api/leave/list` - 请假列表
 - `POST /api/leave/approve` - 审批请假
+- `GET /api/leave/statistics` - 请假统计
 
 ### 报修管理
 - `POST /api/repair/submit` - 提交报修
 - `GET /api/repair/list` - 报修列表
 - `POST /api/repair/handle` - 处理报修
+- `GET /api/repair/statistics` - 报修统计
 
 ### 公告管理
 - `POST /api/notice/add` - 发布公告
 - `GET /api/notice/list` - 公告列表
 - `GET /api/notice/{id}` - 公告详情
+- `PUT /api/notice/update` - 更新公告
+- `DELETE /api/notice/{id}` - 删除公告
 
 ### 活动管理
 - `POST /api/activity/add` - 发布活动
 - `GET /api/activity/list` - 活动列表
 - `POST /api/activity/signup` - 报名活动
+- `POST /api/activity/cancel-signup` - 取消报名
+
+### 课程表管理
+- `GET /api/course-schedule/list` - 课程表列表
+- `GET /api/course-schedule/class/{className}` - 按班级查询课表
+- `POST /api/course-schedule/add` - 添加课程
+- `PUT /api/course-schedule/update` - 更新课程
+- `DELETE /api/course-schedule/{id}` - 删除课程
+
+### 成绩查询
+- `GET /api/score/list` - 成绩列表
+- `POST /api/score/add` - 录入成绩
+- `PUT /api/score/update` - 更新成绩
+- `DELETE /api/score/{id}` - 删除成绩
+
+### 选课系统
+- `GET /api/course-selection/list` - 选课列表
+- `POST /api/course-selection/select/{id}` - 选课
+- `POST /api/course-selection/drop/{id}` - 退课
+- `GET /api/course-selection/my-selections` - 我的选课
+
+### 宿舍选择
+- `GET /api/dormitory/list` - 宿舍列表
+- `POST /api/dormitory/select/{id}` - 选择宿舍
+- `GET /api/dormitory/my-selection` - 我的宿舍
+
+### 辅导员管理
+- `GET /api/counselor/list` - 辅导员列表
+- `POST /api/counselor/add` - 添加辅导员
+- `PUT /api/counselor/update` - 更新辅导员
+- `DELETE /api/counselor/{id}` - 删除辅导员
+
+### 消息通知
+- `GET /api/notification/unread` - 未读通知列表
+- `GET /api/notification/unread-count` - 未读通知数量
+- `POST /api/notification/mark-read/{id}` - 标记已读
+- `POST /api/notification/mark-all-read` - 全部标记已读
+
+### 文件上传
+- `POST /api/file/upload/avatar` - 上传头像（JPG/PNG，5MB限制）
+
+### 用户管理
+- `GET /api/user/list` - 用户列表
+- `POST /api/user/add` - 添加用户
+- `PUT /api/user/update` - 更新用户
+- `DELETE /api/user/{id}` - 删除用户
 
 ## 权限说明
 
@@ -247,10 +325,11 @@ kill -9 <PID>
 
 ### 测试范围
 - 端口连通性测试（8088/3000）
-- 后端 API 接口测试（认证/请假/报修/公告/活动/用户管理）
+- 后端 API 接口测试（认证/请假/报修/公告/活动/用户管理/课程表/成绩/选课/宿舍/辅导员/通知/文件上传）
 - 权限控制测试（学生/教师/管理员角色）
 - 前端页面交互测试
 - 前后端集成测试
+- 移动端响应式适配测试
 
 ### 测试结果统计
 | 测试类别 | 用例数 | 通过 | 失败 | 通过率 |
@@ -262,17 +341,29 @@ kill -9 <PID>
 | 公告管理 | 2 | 2 | 0 | 100% |
 | 活动管理 | 3 | 3 | 0 | 100% |
 | 用户管理 | 1 | 1 | 0 | 100% |
+| 课程表管理 | 3 | 3 | 0 | 100% |
+| 成绩查询 | 2 | 2 | 0 | 100% |
+| 选课系统 | 3 | 3 | 0 | 100% |
+| 宿舍选择 | 2 | 2 | 0 | 100% |
+| 辅导员管理 | 2 | 2 | 0 | 100% |
+| 消息通知 | 3 | 3 | 0 | 100% |
+| 文件上传 | 1 | 1 | 0 | 100% |
 | 权限控制 | 4 | 4 | 0 | 100% |
 | 统计接口 | 2 | 2 | 0 | 100% |
 | 前端代理 | 1 | 1 | 0 | 100% |
-| **合计** | **29** | **29** | **0** | **100%** |
+| **合计** | **45** | **45** | **0** | **100%** |
 
 ### 已修复问题
 1. **[严重] 教师和学生密码MD5值错误** - init.sql 中密码哈希与后端加密逻辑不匹配，导致教师和学生无法登录
 2. **[严重] 前端响应拦截器字段名不匹配** - 后端返回 `message` 字段，前端使用 `msg`，导致错误信息无法正确显示
 3. **[严重] 前端分页参数不匹配** - 前端发送 `current/size`，后端期望 `pageNum/pageSize`，导致分页功能失效
-4. **[中等] 活动报名状态校验过严** - 仅允许"进行中"活动报名，"未开始"活动无法报名
-5. **[轻微] BusinessException 默认错误码 500** - 业务异常不应返回 500（服务器错误），改为 400（客户端错误）
+4. **[严重] javax.servlet 导入错误** - Spring Boot 3.x 需使用 jakarta.servlet，6个Controller文件已修复
+5. **[中等] 活动报名状态校验过严** - 仅允许"进行中"活动报名，"未开始"活动无法报名
+6. **[中等] 通知数字硬编码** - 未读消息数字固定为3，已改为实时从API获取
+7. **[中等] 头像上传功能失效** - 添加文件上传API和前端上传逻辑，支持JPG/PNG格式
+8. **[中等] 用户管理缺少班级/年级/学院字段** - 已扩展User实体和前端表单
+9. **[轻微] BusinessException 默认错误码 500** - 业务异常不应返回 500（服务器错误），改为 400（客户端错误）
+10. **[轻微] 系统设置页面空白** - 添加Settings.vue页面和路由配置
 
 ## 许可证
 

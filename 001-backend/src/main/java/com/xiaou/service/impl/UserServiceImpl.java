@@ -72,13 +72,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     
     @Override
     public Page<User> getUserPage(int pageNum, int pageSize, String keyword) {
+        return getUserPage(pageNum, pageSize, keyword, null);
+    }
+    
+    @Override
+    public Page<User> getUserPage(int pageNum, int pageSize, String keyword, String role) {
         Page<User> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         
+        if (role != null && !role.isEmpty()) {
+            wrapper.eq(User::getRole, role);
+        }
+        
         if (keyword != null && !keyword.isEmpty()) {
-            wrapper.like(User::getUsername, keyword)
+            wrapper.and(w -> w.like(User::getUsername, keyword)
                     .or().like(User::getRealName, keyword)
-                    .or().like(User::getPhone, keyword);
+                    .or().like(User::getPhone, keyword));
         }
         
         wrapper.orderByDesc(User::getCreateTime);
