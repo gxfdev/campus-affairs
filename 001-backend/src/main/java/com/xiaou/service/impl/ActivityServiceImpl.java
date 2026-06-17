@@ -118,8 +118,8 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             throw new BusinessException("未找到报名记录");
         }
         
-        // 删除报名记录
-        activitySignupService.removeById(signup.getId());
+        // 物理删除报名记录（避免唯一索引冲突，允许再次报名）
+        ((com.xiaou.mapper.ActivitySignupMapper) activitySignupService.getBaseMapper()).physicalDeleteById(signup.getId());
         
         // 更新活动报名人数
         Activity activity = getById(activityId);
