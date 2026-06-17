@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.log
+
+# Build
+001-frontend/dist/
+001-backend/target/
+
+# Python
+__pycache__/
+download_project.py

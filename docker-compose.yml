@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: campus-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: campus_affairs
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./001-backend/src/main/resources/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - campus-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: 001-backend/Dockerfile
+    container_name: campus-backend
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_affairs?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+    depends_on:
+      - mysql
+    networks:
+      - campus-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: 001-frontend/Dockerfile
+    container_name: campus-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - campus-net
+
+volumes:
+  mysql-data:
+
+networks:
+  campus-net:
+    driver: bridge
