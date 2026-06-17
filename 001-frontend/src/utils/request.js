@@ -17,6 +17,19 @@ request.interceptors.request.use(
       // 添加Bearer前缀
       config.headers['Authorization'] = `Bearer ${token}`
     }
+
+    // 统一参数名：前端 current/size -> 后端 pageNum/pageSize
+    if (config.params) {
+      if (config.params.current !== undefined) {
+        config.params.pageNum = config.params.current
+        delete config.params.current
+      }
+      if (config.params.size !== undefined) {
+        config.params.pageSize = config.params.size
+        delete config.params.size
+      }
+    }
+
     return config
   },
   error => {
@@ -43,10 +56,10 @@ request.interceptors.response.use(
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
       router.push('/login')
-      return Promise.reject(new Error(res.msg || '登录已过期'))
+      return Promise.reject(new Error(res.message || '登录已过期'))
     } else {
-      ElMessage.error(res.msg || '请求失败')
-      return Promise.reject(new Error(res.msg || '请求失败'))
+      ElMessage.error(res.message || '请求失败')
+      return Promise.reject(new Error(res.message || '请求失败'))
     }
   },
   error => {
@@ -70,7 +83,7 @@ request.interceptors.response.use(
           ElMessage.error('服务器错误')
           break
         default:
-          ElMessage.error(error.response.data?.msg || '请求失败')
+          ElMessage.error(error.response.data?.message || '请求失败')
       }
     } else {
       ElMessage.error('网络错误，请检查网络连接')

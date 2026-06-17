@@ -39,7 +39,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         
         // 设置活动状态
         if (activity.getStatus() == null || activity.getStatus().isEmpty()) {
-            activity.setStatus("未开始"); // 默认未开始
+            activity.setStatus("进行中"); // 默认进行中
         }
         
         save(activity);
@@ -77,9 +77,9 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             throw new BusinessException("活动不存在");
         }
         
-        // 检查活动状态
-        if (!"进行中".equals(activity.getStatus())) {
-            throw new BusinessException("活动未开放报名");
+        // 检查活动状态（进行中或未开始均可报名）
+        if ("已结束".equals(activity.getStatus())) {
+            throw new BusinessException("活动已结束，无法报名");
         }
         
         // 检查是否已报名

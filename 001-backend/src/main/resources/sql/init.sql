@@ -128,11 +128,11 @@ CREATE TABLE IF NOT EXISTS `activity_signup` (
 INSERT INTO `user` (`username`, `password`, `role`, `real_name`, `phone`, `email`, `student_no`) VALUES
 -- 默认管理员 (密码: admin123)
 ('admin', '0192023a7bbd73250516f069df18b500', 'admin', '系统管理员', '13800000000', 'admin@campus.edu', 'ADMIN001'),
--- 默认教师 (密码: teacher123) 
-('teacher001', '5e543256c480ac577d30f76f9120eb74', 'teacher', '张老师', '13800000001', 'zhang@campus.edu', 'T001'),
+-- 默认教师 (密码: teacher123)
+('teacher001', 'a426dcf72ba25d046591f81a5495eab7', 'teacher', '张老师', '13800000001', 'zhang@campus.edu', 'T001'),
 -- 默认学生 (密码: student123)
-('student001', 'b7f40055515237ae9e6ad8d808769e53', 'student', '李小明', '13800000002', 'li@campus.edu', '2024001'),
-('student002', 'b7f40055515237ae9e6ad8d808769e53', 'student', '王小红', '13800000003', 'wang@campus.edu', '2024002');
+('student001', 'ad6a280417a0f533d8b670c61667e1a0', 'student', '李小明', '13800000002', 'li@campus.edu', '2024001'),
+('student002', 'ad6a280417a0f533d8b670c61667e1a0', 'student', '王小红', '13800000003', 'wang@campus.edu', '2024002');
 
 -- 插入示例公告数据
 INSERT INTO `notice` (`title`, `content`, `category`, `author_id`, `is_top`) VALUES
