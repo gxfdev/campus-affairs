@@ -40,7 +40,7 @@ public class CourseScheduleController {
     }
 
     /**
-     * 学生获取自己的课程表
+     * 获取自己的课程表（学生查看本班课表）
      */
     @GetMapping("/my-schedule")
     public Result<List<CourseSchedule>> getMySchedule(
@@ -48,16 +48,12 @@ public class CourseScheduleController {
             HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         String role = (String) request.getAttribute("role");
-        
-        if (!"student".equals(role)) {
-            return Result.error(403, "仅学生可以查看自己的课程表");
-        }
-        
+
         User user = userService.getById(userId);
         if (user == null || user.getClassName() == null) {
-            return Result.error(400, "学生信息不完整");
+            return Result.error(400, "用户信息不完整，未关联班级");
         }
-        
+
         return Result.success(courseScheduleService.getScheduleByClass(user.getClassName(), semester));
     }
 

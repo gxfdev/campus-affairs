@@ -7,15 +7,15 @@
       </div>
       <div class="header-actions">
         <!-- 学院选择 -->
-        <el-select v-model="currentCollege" placeholder="选择学院" style="width: 160px" @change="onCollegeChange" v-if="isAdmin || isCounselor">
+        <el-select v-model="currentCollege" placeholder="选择学院" style="width: 160px" @change="onCollegeChange">
           <el-option v-for="c in colleges" :key="c" :label="c" :value="c" />
         </el-select>
         <!-- 专业选择 -->
-        <el-select v-model="currentMajor" placeholder="选择专业" style="width: 180px; margin-left: 8px" @change="onMajorChange" v-if="isAdmin || isCounselor">
+        <el-select v-model="currentMajor" placeholder="选择专业" style="width: 180px; margin-left: 8px" @change="onMajorChange">
           <el-option v-for="m in majors" :key="m" :label="m" :value="m" />
         </el-select>
         <!-- 班级选择 -->
-        <el-select v-model="currentClass" placeholder="选择班级" style="width: 150px; margin-left: 8px" @change="fetchSchedule" v-if="isAdmin || isCounselor">
+        <el-select v-model="currentClass" placeholder="选择班级" style="width: 150px; margin-left: 8px" @change="fetchSchedule">
           <el-option v-for="cls in classes" :key="cls" :label="cls" :value="cls" />
         </el-select>
         <!-- 学期选择 -->
@@ -245,19 +245,14 @@ const onMajorChange = async () => {
 const fetchSchedule = async () => {
   loading.value = true
   try {
-    if (isStudent.value) {
-      const res = await getMySchedule(currentSemester.value)
-      if (res.code === 200) scheduleData.value = res.data || []
-    } else {
-      const className = currentClass.value
-      if (!className) {
-        loading.value = false
-        scheduleData.value = []
-        return
-      }
-      const res = await getScheduleByClass(className, currentSemester.value)
-      if (res.code === 200) scheduleData.value = res.data || []
+    const className = currentClass.value
+    if (!className) {
+      loading.value = false
+      scheduleData.value = []
+      return
     }
+    const res = await getScheduleByClass(className, currentSemester.value)
+    if (res.code === 200) scheduleData.value = res.data || []
   } catch (e) {
     console.error('获取课程表失败', e)
   } finally {
@@ -281,16 +276,24 @@ const handleAddCourse = async () => {
 }
 
 onMounted(async () => {
-  if (isStudent.value) {
-    fetchSchedule()
-  } else {
-    // 加载学院列表
-    const res = await getColleges()
-    if (res.code === 200) colleges.value = res.data || []
-    // 如果有班级信息，自动加载
-    if (userInfo.value?.className) {
-      currentClass.value = userInfo.value.className
+  // 加载学院列表
+  const res = await getColleges()
+  if (res.code === 200) colleges.value = res.data || []
+  // 如果有班级信息，自动加载本班课表
+  if (userInfo.value?.className) {
+    currentClass.value = userInfo.value.className
+    // 自动设置学院和专业
+    if (userInfo.value?.college) {
+      currentCollege.value = userInfo.value.college
+      const majorRes = await getMajors(currentCollege.value)
+      if (majorRes.code === 200) majors.value = majorRes.data || []
     }
+    if (userInfo.value?.major) {
+      currentMajor.value = userInfo.value.major
+      const classRes = await getClasses({ college: currentCollege.value, major: currentMajor.value })
+      if (classRes.code === 200) classes.value = classRes.data || []
+    }
+    fetchSchedule()
   }
 })
 </script>

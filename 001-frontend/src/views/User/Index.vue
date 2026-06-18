@@ -23,12 +23,15 @@
           <el-form-item label="角色">
             <el-select v-model="searchForm.role" placeholder="请选择角色" clearable class="role-select">
               <el-option label="管理员" value="admin" />
-              <el-option label="教师" value="teacher" />
+              <el-option label="辅导员" value="counselor" />
               <el-option label="学生" value="student" />
             </el-select>
           </el-form-item>
           <el-form-item label="用户名">
             <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable class="username-input" />
+          </el-form-item>
+          <el-form-item label="姓名">
+            <el-input v-model="searchForm.realName" placeholder="请输入姓名" clearable class="username-input" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="fetchUserList" class="search-btn">
@@ -47,7 +50,7 @@
       <div class="table-container">
         <el-table :data="tableData" v-loading="loading" class="custom-table" stripe>
           <el-table-column prop="id" label="ID" width="80" align="center" />
-          <el-table-column prop="username" label="用户名" width="150" align="center">
+          <el-table-column prop="username" label="账号" width="150" align="center">
             <template #default="{ row }">
               <div class="username-info">
                 <el-avatar :size="28" class="user-avatar">{{ row.username?.charAt(0) }}</el-avatar>
@@ -59,8 +62,18 @@
           <el-table-column prop="role" label="角色" width="120" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.role === 'admin'" type="danger" class="role-tag">管理员</el-tag>
-              <el-tag v-else-if="row.role === 'teacher'" type="warning" class="role-tag">教师</el-tag>
+              <el-tag v-else-if="row.role === 'counselor'" type="success" class="role-tag">辅导员</el-tag>
               <el-tag v-else type="primary" class="role-tag">学生</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="初始密码" width="110" align="center">
+            <template #default>
+              <span class="password-cell">123456</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="studentNo" label="学号/工号" width="120" align="center">
+            <template #default="{ row }">
+              {{ row.studentNo || '-' }}
             </template>
           </el-table-column>
           <el-table-column prop="className" label="班级" width="120" align="center">
@@ -73,9 +86,14 @@
               {{ row.grade ? gradeMap[row.grade] : '-' }}
             </template>
           </el-table-column>
-          <el-table-column prop="college" label="学院" min-width="150" align="center">
+          <el-table-column prop="college" label="学院" min-width="130" align="center">
             <template #default="{ row }">
               {{ row.college || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="major" label="专业" min-width="150" align="center">
+            <template #default="{ row }">
+              {{ row.major || '-' }}
             </template>
           </el-table-column>
           <el-table-column prop="phone" label="手机号" width="130" align="center" />
@@ -160,7 +178,7 @@
         <el-form-item label="角色" prop="role">
           <el-select v-model="userForm.role" placeholder="请选择角色" style="width: 100%" class="custom-select">
             <el-option label="管理员" value="admin" />
-            <el-option label="教师" value="teacher" />
+            <el-option label="辅导员" value="counselor" />
             <el-option label="学生" value="student" />
           </el-select>
         </el-form-item>
@@ -170,10 +188,13 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="userForm.email" placeholder="请输入邮箱" class="custom-input" />
         </el-form-item>
+        <el-form-item label="学号/工号" v-if="userForm.role === 'student' || userForm.role === 'counselor'">
+          <el-input v-model="userForm.studentNo" placeholder="请输入学号/工号" class="custom-input" />
+        </el-form-item>
         <el-form-item label="班级" v-if="userForm.role === 'student'">
           <el-input v-model="userForm.className" placeholder="如：计科2401" class="custom-input" />
         </el-form-item>
-        <el-form-item label="年级" v-if="userForm.role === 'student'">
+        <el-form-item label="年级" v-if="userForm.role === 'student' || userForm.role === 'counselor'">
           <el-select v-model="userForm.grade" placeholder="请选择年级" style="width: 100%" class="custom-select">
             <el-option label="大一" :value="1" />
             <el-option label="大二" :value="2" />
@@ -181,8 +202,11 @@
             <el-option label="大四" :value="4" />
           </el-select>
         </el-form-item>
-        <el-form-item label="学院" v-if="userForm.role === 'student' || userForm.role === 'teacher'">
+        <el-form-item label="学院" v-if="userForm.role === 'student' || userForm.role === 'counselor'">
           <el-input v-model="userForm.college" placeholder="如：计算机学院" class="custom-input" />
+        </el-form-item>
+        <el-form-item label="专业" v-if="userForm.role === 'student'">
+          <el-input v-model="userForm.major" placeholder="如：计算机科学与技术" class="custom-input" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -215,7 +239,8 @@ const editingUser = ref(null)
 
 const searchForm = reactive({
   role: '',
-  username: ''
+  username: '',
+  realName: ''
 })
 
 const pagination = reactive({
@@ -235,9 +260,11 @@ const userForm = reactive({
   role: 'student',
   phone: '',
   email: '',
+  studentNo: '',
   className: '',
   grade: null,
-  college: ''
+  college: '',
+  major: ''
 })
 
 const userRules = {
@@ -266,9 +293,10 @@ const fetchUserList = async () => {
   loading.value = true
   try {
     const params = {
-      current: pagination.current,
-      size: pagination.size,
-      ...searchForm
+      pageNum: pagination.current,
+      pageSize: pagination.size,
+      keyword: searchForm.username || searchForm.realName || '',
+      role: searchForm.role
     }
     const res = await getUserList(params)
     if (res.code === 200) {
@@ -286,6 +314,7 @@ const fetchUserList = async () => {
 const resetSearch = () => {
   searchForm.role = ''
   searchForm.username = ''
+  searchForm.realName = ''
   pagination.current = 1
   fetchUserList()
 }
@@ -306,9 +335,11 @@ const handleSubmit = async () => {
             role: userForm.role,
             phone: userForm.phone,
             email: userForm.email,
+            studentNo: userForm.studentNo,
             className: userForm.className,
             grade: userForm.grade,
-            college: userForm.college
+            college: userForm.college,
+            major: userForm.major
           })
         } else {
           res = await addUser(userForm)
@@ -337,9 +368,11 @@ const handleEdit = (row) => {
     role: row.role,
     phone: row.phone,
     email: row.email,
+    studentNo: row.studentNo || '',
     className: row.className || '',
     grade: row.grade || null,
-    college: row.college || ''
+    college: row.college || '',
+    major: row.major || ''
   })
   showAddDialog.value = true
 }
@@ -547,6 +580,15 @@ onMounted(() => {
   border-radius: 20px !important;
   padding: 0 12px !important;
   font-weight: 500;
+}
+
+.password-cell {
+  font-family: 'Courier New', monospace;
+  color: #E6A23C;
+  font-weight: 600;
+  background: #fdf6ec;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .action-btn {

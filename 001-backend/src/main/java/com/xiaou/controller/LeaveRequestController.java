@@ -110,8 +110,12 @@ public class LeaveRequestController {
             return Result.error(404, "学生不存在");
         }
         
-        // 验证审批人是否为该学生的专属辅导员
-        if (!approverId.equals(student.getCounselorId())) {
+        // 获取审批辅导员信息，验证是否为该学生的专属辅导员
+        Counselor counselor = counselorService.getByUserId(approverId);
+        if (counselor == null) {
+            return Result.error(403, "辅导员信息不存在");
+        }
+        if (!counselor.getId().equals(student.getCounselorId())) {
             return Result.error(403, "您没有权限审批该学生的请假申请，只有该学生的专属辅导员才能审批");
         }
         
