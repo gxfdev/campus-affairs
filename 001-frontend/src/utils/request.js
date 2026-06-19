@@ -33,7 +33,6 @@ request.interceptors.request.use(
     return config
   },
   error => {
-    console.error('请求错误:', error)
     return Promise.reject(error)
   }
 )
@@ -63,16 +62,20 @@ request.interceptors.response.use(
     }
   },
   error => {
-    console.error('响应错误:', error)
+    // 静默处理401和请求取消错误，避免控制台报错
+    const status = error.response?.status
+    const isAborted = error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || error.message === 'Network Error'
+    
+    if (status === 401) {
+      ElMessage.error('登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      router.push('/login')
+      return Promise.reject(error)
+    }
     
     if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          ElMessage.error('登录已过期，请重新登录')
-          localStorage.removeItem('token')
-          localStorage.removeItem('userInfo')
-          router.push('/login')
-          break
+      switch (status) {
         case 403:
           ElMessage.error('没有权限访问')
           break
@@ -85,7 +88,7 @@ request.interceptors.response.use(
         default:
           ElMessage.error(error.response.data?.message || '请求失败')
       }
-    } else {
+    } else if (!isAborted) {
       ElMessage.error('网络错误，请检查网络连接')
     }
     

@@ -228,7 +228,7 @@ const fetchRepairList = async () => {
       pagination.total = res.data.total || 0
     }
   } catch (error) {
-    console.error('获取报修列表失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -257,7 +257,7 @@ const handleSubmit = async () => {
           fetchRepairList()
         }
       } catch (error) {
-        console.error('提交失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -281,7 +281,7 @@ const handleStatus = async (id, status) => {
         fetchRepairList()
       }
     } catch (error) {
-      console.error('操作失败:', error)
+      // 静默处理
     }
   }).catch(() => {})
 }

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xiaou.entity.User;
 
+import java.util.Map;
+
 /**
  * 用户Service接口
  * @author xiaou
@@ -34,6 +36,11 @@ public interface UserService extends IService<User> {
      * 分页查询用户列表（支持角色筛选）
      */
     Page<User> getUserPage(int pageNum, int pageSize, String keyword, String role);
+    
+    /**
+     * 分页查询用户列表（多条件筛选）
+     */
+    Page<User> getUserPage(int pageNum, int pageSize, Map<String, Object> params);
     
     /**
      * 修改密码

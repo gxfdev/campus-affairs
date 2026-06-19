@@ -21,17 +21,33 @@
       <div class="search-section">
         <el-form :inline="true" :model="searchForm" class="search-form">
           <el-form-item label="角色">
-            <el-select v-model="searchForm.role" placeholder="请选择角色" clearable class="role-select">
+            <el-select v-model="searchForm.role" placeholder="全部角色" clearable class="role-select">
               <el-option label="管理员" value="admin" />
               <el-option label="辅导员" value="counselor" />
               <el-option label="学生" value="student" />
             </el-select>
           </el-form-item>
-          <el-form-item label="用户名">
-            <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable class="username-input" />
+          <el-form-item label="关键字">
+            <el-input v-model="searchForm.keyword" placeholder="姓名/账号/手机号" clearable class="username-input" @keyup.enter="fetchUserList" />
           </el-form-item>
-          <el-form-item label="姓名">
-            <el-input v-model="searchForm.realName" placeholder="请输入姓名" clearable class="username-input" />
+          <el-form-item label="学号">
+            <el-input v-model="searchForm.studentNo" placeholder="请输入学号" clearable class="short-input" @keyup.enter="fetchUserList" />
+          </el-form-item>
+          <el-form-item label="班级">
+            <el-input v-model="searchForm.className" placeholder="如：计科2401" clearable class="short-input" @keyup.enter="fetchUserList" />
+          </el-form-item>
+          <el-form-item label="学院">
+            <el-select v-model="searchForm.college" placeholder="全部学院" clearable class="role-select" @change="onCollegeChange">
+              <el-option v-for="c in collegeOptions" :key="c" :label="c" :value="c" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="年级">
+            <el-select v-model="searchForm.grade" placeholder="全部年级" clearable class="short-select">
+              <el-option label="大一" :value="1" />
+              <el-option label="大二" :value="2" />
+              <el-option label="大三" :value="3" />
+              <el-option label="大四" :value="4" />
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="fetchUserList" class="search-btn">
@@ -226,6 +242,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getUserList, addUser, updateUser, deleteUser } from '@/api/user'
+import { getColleges } from '@/api/courseSchedule'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const userStore = useUserStore()
@@ -236,11 +253,15 @@ const submitting = ref(false)
 const showAddDialog = ref(false)
 const formRef = ref(null)
 const editingUser = ref(null)
+const collegeOptions = ref([])
 
 const searchForm = reactive({
   role: '',
-  username: '',
-  realName: ''
+  keyword: '',
+  studentNo: '',
+  className: '',
+  college: '',
+  grade: null
 })
 
 const pagination = reactive({
@@ -295,8 +316,12 @@ const fetchUserList = async () => {
     const params = {
       pageNum: pagination.current,
       pageSize: pagination.size,
-      keyword: searchForm.username || searchForm.realName || '',
-      role: searchForm.role
+      keyword: searchForm.keyword || '',
+      role: searchForm.role || '',
+      studentNo: searchForm.studentNo || '',
+      className: searchForm.className || '',
+      college: searchForm.college || '',
+      grade: searchForm.grade || ''
     }
     const res = await getUserList(params)
     if (res.code === 200) {
@@ -304,17 +329,26 @@ const fetchUserList = async () => {
       pagination.total = res.data.total || 0
     }
   } catch (error) {
-    console.error('获取用户列表失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
 }
 
+// 学院选择变化
+const onCollegeChange = () => {
+  pagination.current = 1
+  fetchUserList()
+}
+
 // 重置搜索
 const resetSearch = () => {
   searchForm.role = ''
-  searchForm.username = ''
-  searchForm.realName = ''
+  searchForm.keyword = ''
+  searchForm.studentNo = ''
+  searchForm.className = ''
+  searchForm.college = ''
+  searchForm.grade = null
   pagination.current = 1
   fetchUserList()
 }
@@ -351,7 +385,7 @@ const handleSubmit = async () => {
           fetchUserList()
         }
       } catch (error) {
-        console.error('操作失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -391,7 +425,7 @@ const handleDelete = async (id) => {
         fetchUserList()
       }
     } catch (error) {
-      console.error('删除失败:', error)
+      // 静默处理
     }
   }).catch(() => {})
 }
@@ -404,8 +438,15 @@ const resetForm = () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchUserList()
+  // 加载学院选项
+  try {
+    const res = await getColleges()
+    if (res.code === 200) collegeOptions.value = res.data || []
+  } catch (e) {
+    // 静默处理
+  }
 })
 </script>
 
@@ -500,6 +541,22 @@ onMounted(() => {
 }
 
 .username-input :deep(.el-input__wrapper) {
+  border-radius: 8px;
+}
+
+.short-input {
+  width: 150px;
+}
+
+.short-input :deep(.el-input__wrapper) {
+  border-radius: 8px;
+}
+
+.short-select {
+  width: 120px;
+}
+
+.short-select :deep(.el-input__wrapper) {
   border-radius: 8px;
 }
 

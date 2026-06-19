@@ -130,17 +130,25 @@ const pagination = reactive({ current: 1, size: 12, total: 0 })
 const fetchDormitories = async () => {
   loading.value = true
   try {
-    const res = await getDormitoryList({
+    const params = {
       pageNum: pagination.current,
       pageSize: pagination.size,
       ...filter
-    })
+    }
+    // 学生自动按学院和性别筛选
+    if (isStudent.value && userInfo.value?.college) {
+      params.college = userInfo.value.college
+    }
+    if (isStudent.value && userInfo.value?.gender) {
+      params.gender = userInfo.value.gender
+    }
+    const res = await getDormitoryList(params)
     if (res.code === 200) {
       dormList.value = res.data?.records || []
       pagination.total = res.data?.total || 0
     }
   } catch (e) {
-    console.error('获取宿舍列表失败', e)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -154,7 +162,7 @@ const fetchMyDormitory = async () => {
       myDormInfo.value = res.data
     }
   } catch (e) {
-    console.error('获取我的宿舍失败', e)
+    // 静默处理
   }
 }
 

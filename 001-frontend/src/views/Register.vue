@@ -176,7 +176,7 @@ const handleRegister = async () => {
           router.push('/login')
         }
       } catch (error) {
-        console.error('注册失败:', error)
+        // 静默处理
       } finally {
         loading.value = false
       }

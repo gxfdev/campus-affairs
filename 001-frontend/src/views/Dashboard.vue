@@ -219,7 +219,7 @@ const fetchDashboardData = async () => {
       statsData.value[1].value = repairRes.data.total || 0
     }
   } catch (error) {
-    console.error('获取数据失败:', error)
+    // 静默处理
   }
 }
 

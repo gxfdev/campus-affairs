@@ -25,13 +25,17 @@ export const useUserStore = defineStore('user', () => {
         return true
       }
     } catch (error) {
-      console.error('登录失败:', error)
+      // 静默处理
       return false
     }
   }
 
   // 获取用户信息
   const fetchUserInfo = async () => {
+    // 没有token时不发请求，避免ERR_ABORTED
+    if (!token.value) {
+      return
+    }
     try {
       const res = await getUserInfo()
       if (res.code === 200 && res.data) {
@@ -39,7 +43,10 @@ export const useUserStore = defineStore('user', () => {
         localStorage.setItem('userInfo', JSON.stringify(res.data))
       }
     } catch (error) {
-      console.error('获取用户信息失败:', error)
+      // 静默处理，避免控制台报错
+      if (error.response && error.response.status !== 401) {
+        // 静默处理
+      }
     }
   }
 
@@ -60,7 +67,7 @@ export const useUserStore = defineStore('user', () => {
       try {
         userInfo.value = JSON.parse(savedUserInfo)
       } catch (error) {
-        console.error('解析用户信息失败:', error)
+        // 静默处理
       }
     }
   }

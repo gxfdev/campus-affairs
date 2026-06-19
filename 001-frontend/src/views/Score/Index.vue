@@ -190,7 +190,7 @@ const fetchScores = async () => {
       pagination.total = res.data?.total || 0
     }
   } catch (e) {
-    console.error('获取成绩失败', e)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -201,7 +201,7 @@ const fetchAllStudents = async () => {
   try {
     const res = await getAllMyStudents()
     if (res.code === 200) allStudents.value = res.data || []
-  } catch (e) { console.error(e) }
+  } catch (e) { /* 静默处理 */ }
 }
 
 const handleAddScore = async () => {

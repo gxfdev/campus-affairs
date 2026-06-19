@@ -164,7 +164,7 @@ const fetchActivityDetail = async () => {
       }
     }
   } catch (error) {
-    console.error('获取活动详情失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -178,7 +178,7 @@ const fetchSignupList = async (activityId) => {
       signupList.value = res.data || []
     }
   } catch (error) {
-    console.error('获取报名列表失败:', error)
+    // 静默处理
   }
 }
 
@@ -204,7 +204,7 @@ const handleSignup = async () => {
         fetchActivityDetail()
       }
     } catch (error) {
-      console.error('报名失败:', error)
+      // 静默处理
     } finally {
       submitting.value = false
     }
@@ -226,7 +226,7 @@ const handleCancelSignup = async () => {
         fetchActivityDetail()
       }
     } catch (error) {
-      console.error('取消报名失败:', error)
+      // 静默处理
     } finally {
       submitting.value = false
     }

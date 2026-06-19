@@ -38,6 +38,31 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     
     @Override
     public void submitLeaveRequest(LeaveRequest leaveRequest) {
+        // 参数校验
+        if (leaveRequest.getStartTime() == null || leaveRequest.getEndTime() == null) {
+            throw new BusinessException("开始时间和结束时间不能为空");
+        }
+        if (leaveRequest.getReason() == null || leaveRequest.getReason().trim().isEmpty()) {
+            throw new BusinessException("请假理由不能为空");
+        }
+        if (!leaveRequest.getEndTime().isAfter(leaveRequest.getStartTime())) {
+            throw new BusinessException("结束时间必须晚于开始时间");
+        }
+        if (leaveRequest.getStartTime().isBefore(LocalDateTime.now().minusHours(1))) {
+            throw new BusinessException("开始时间不能早于当前时间");
+        }
+
+        // 检查时间重叠：同一学生不能在重叠时间段内有多条有效请假（待审批或已通过）
+        LambdaQueryWrapper<LeaveRequest> overlapWrapper = new LambdaQueryWrapper<>();
+        overlapWrapper.eq(LeaveRequest::getStudentId, leaveRequest.getStudentId());
+        overlapWrapper.in(LeaveRequest::getStatus, 0, 1); // 待审批或已通过
+        overlapWrapper.lt(LeaveRequest::getStartTime, leaveRequest.getEndTime());
+        overlapWrapper.gt(LeaveRequest::getEndTime, leaveRequest.getStartTime());
+        long overlapCount = count(overlapWrapper);
+        if (overlapCount > 0) {
+            throw new BusinessException("该时间段内已存在请假申请，请勿重复提交");
+        }
+
         long days = Duration.between(leaveRequest.getStartTime(), leaveRequest.getEndTime()).toDays();
         leaveRequest.setDays((int) days + 1);
         leaveRequest.setStatus(0);
@@ -101,13 +126,28 @@ public class LeaveRequestServiceImpl extends ServiceImpl<LeaveRequestMapper, Lea
     }
     
     private void fillStudentAndApproverInfo(Page<LeaveRequest> resultPage) {
+        if (resultPage.getRecords().isEmpty()) {
+            return;
+        }
+        // 收集所有学生ID和审批人ID
+        List<Long> userIds = new java.util.ArrayList<>();
         for (LeaveRequest record : resultPage.getRecords()) {
-            User student = userService.getById(record.getStudentId());
+            if (record.getStudentId() != null) userIds.add(record.getStudentId());
+            if (record.getApproverId() != null) userIds.add(record.getApproverId());
+        }
+        if (userIds.isEmpty()) return;
+        // 批量查询用户信息，避免N+1查询
+        List<User> users = userService.listByIds(userIds);
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        
+        for (LeaveRequest record : resultPage.getRecords()) {
+            User student = userMap.get(record.getStudentId());
             if (student != null) {
                 record.setStudentName(student.getRealName() != null ? student.getRealName() : student.getUsername());
             }
             if (record.getApproverId() != null) {
-                User approver = userService.getById(record.getApproverId());
+                User approver = userMap.get(record.getApproverId());
                 if (approver != null) {
                     record.setApproverName(approver.getRealName() != null ? approver.getRealName() : approver.getUsername());
                 }

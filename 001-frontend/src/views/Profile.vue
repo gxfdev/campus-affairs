@@ -139,16 +139,53 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 头像裁剪对话框 -->
+    <el-dialog v-model="showCropDialog" title="裁剪头像" width="600px" @close="onCropDialogClose" :close-on-click-modal="false">
+      <div class="crop-container">
+        <div class="crop-canvas-wrapper" ref="cropWrapper">
+          <canvas
+            ref="cropCanvas"
+            class="crop-canvas"
+            @mousedown="onCropStart"
+            @mousemove="onCropMove"
+            @mouseup="onCropEnd"
+            @mouseleave="onCropEnd"
+            @wheel.prevent="onWheel"
+          ></canvas>
+          <div class="crop-hint">
+            <el-text type="info" size="small">拖拽选择裁剪区域 · 滚轮缩放图片</el-text>
+          </div>
+        </div>
+        <div class="crop-preview-section">
+          <div class="crop-preview-label">预览效果</div>
+          <div class="crop-preview-box">
+            <canvas ref="previewCanvas" class="crop-preview-canvas" width="120" height="120"></canvas>
+          </div>
+        </div>
+        <div class="crop-actions">
+          <el-button @click="rotateImage" :icon="RefreshRight">旋转90°</el-button>
+          <el-button @click="resetCrop" :icon="RefreshLeft">重置</el-button>
+          <el-button @click="zoomIn" :icon="ZoomIn">放大</el-button>
+          <el-button @click="zoomOut" :icon="ZoomOut">缩小</el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showCropDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCropConfirm" :loading="uploading">确认上传</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser } from '@/api/user'
 import { changePassword } from '@/api/auth'
 import { uploadAvatar } from '@/api/upload'
 import { ElMessage } from 'element-plus'
+import { RefreshRight, RefreshLeft, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo)
@@ -158,11 +195,39 @@ const submitting = ref(false)
 const infoFormRef = ref(null)
 const passwordFormRef = ref(null)
 const fileInput = ref(null)
+
+// 头像裁剪相关
+const showCropDialog = ref(false)
+const uploading = ref(false)
+const previewUrl = ref('')
+const cropCanvas = ref(null)
+const previewCanvas = ref(null)
+const cropWrapper = ref(null)
+const originalFile = ref(null)
+const originalImage = ref(null)
+
+// 裁剪状态
+const cropState = reactive({
+  imgX: 0,      // 图片在canvas中的x偏移
+  imgY: 0,      // 图片在canvas中的y偏移
+  scale: 1,    // 缩放比例
+  rotate: 0,    // 旋转角度
+  cropX: 0,     // 裁剪框x
+  cropY: 0,     // 裁剪框y
+  cropW: 200,   // 裁剪框宽
+  cropH: 200,   // 裁剪框高
+  isDragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  imgNaturalW: 0,
+  imgNaturalH: 0,
+  canvasW: 500,
+  canvasH: 400
+})
+
 const avatarUrl = computed(() => {
   const avatar = userInfo.value?.avatar
   if (!avatar) return ''
-  // 相对路径（如 /uploads/avatar/xxx.jpg）通过Vite/Nginx代理直接访问
-  // 完整URL（如 https://...）直接使用
   return avatar
 })
 
@@ -218,7 +283,7 @@ const triggerUpload = () => {
   fileInput.value?.click()
 }
 
-// 处理文件选择
+// 处理文件选择 - 先预览，再裁剪后上传
 const handleFileChange = async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
@@ -227,45 +292,389 @@ const handleFileChange = async (event) => {
   const validTypes = ['image/jpeg', 'image/png', 'image/jpg']
   if (!validTypes.includes(file.type)) {
     ElMessage.error('仅支持JPG和PNG格式的图片')
+    event.target.value = ''
     return
   }
 
   // 检查文件大小（5MB）
   if (file.size > 5 * 1024 * 1024) {
     ElMessage.error('图片大小不能超过5MB')
+    event.target.value = ''
     return
   }
 
+  // 保存原始文件，显示裁剪对话框
+  originalFile.value = file
+  previewUrl.value = URL.createObjectURL(file)
+  showCropDialog.value = true
+
+  // 清空input，允许重复选择同一文件
+  event.target.value = ''
+
+  // 等待对话框渲染后初始化canvas
+  await nextTick()
+  await initCropCanvas()
+}
+
+// 初始化裁剪canvas
+const initCropCanvas = async () => {
+  const img = new Image()
+  img.src = previewUrl.value
+  await new Promise((resolve) => { img.onload = resolve; img.onerror = resolve })
+  originalImage.value = img
+
+  const canvas = cropCanvas.value
+  if (!canvas) return
+
+  // 设置canvas尺寸
+  const wrapper = cropWrapper.value
+  const wrapperW = wrapper.clientWidth || 500
+  cropState.canvasW = Math.min(wrapperW, 500)
+  cropState.canvasH = 400
+  canvas.width = cropState.canvasW
+  canvas.height = cropState.canvasH
+
+  // 计算图片初始缩放，使其适应canvas
+  cropState.imgNaturalW = img.width
+  cropState.imgNaturalH = img.height
+  const fitScale = Math.min(
+    cropState.canvasW / img.width,
+    cropState.canvasH / img.height
+  ) * 0.8
+  cropState.scale = fitScale
+
+  // 居中图片
+  cropState.imgX = (cropState.canvasW - img.width * cropState.scale) / 2
+  cropState.imgY = (cropState.canvasH - img.height * cropState.scale) / 2
+
+  // 初始化裁剪框（居中正方形）
+  cropState.cropW = 200
+  cropState.cropH = 200
+  cropState.cropX = (cropState.canvasW - cropState.cropW) / 2
+  cropState.cropY = (cropState.canvasH - cropState.cropH) / 2
+
+  cropState.rotate = 0
+
+  drawCropCanvas()
+}
+
+// 绘制裁剪canvas
+const drawCropCanvas = () => {
+  const canvas = cropCanvas.value
+  if (!canvas || !originalImage.value) return
+  const ctx = canvas.getContext('2d')
+
+  // 清空canvas
+  ctx.fillStyle = '#1a1a1a'
+  ctx.fillRect(0, 0, cropState.canvasW, cropState.canvasH)
+
+  // 绘制图片（带旋转和缩放）
+  ctx.save()
+  const cx = cropState.imgX + (originalImage.value.width * cropState.scale) / 2
+  const cy = cropState.imgY + (originalImage.value.height * cropState.scale) / 2
+  ctx.translate(cx, cy)
+  ctx.rotate((cropState.rotate * Math.PI) / 180)
+  ctx.scale(cropState.scale, cropState.scale)
+  ctx.drawImage(originalImage.value, -originalImage.value.width / 2, -originalImage.value.height / 2)
+  ctx.restore()
+
+  // 绘制半透明遮罩
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+  ctx.fillRect(0, 0, cropState.canvasW, cropState.canvasH)
+
+  // 清除裁剪框区域（显示原图）
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(cropState.cropX, cropState.cropY, cropState.cropW, cropState.cropH)
+  ctx.clip()
+  ctx.drawImage(canvas, 0, 0)
+  ctx.restore()
+
+  // 重新绘制裁剪框内的图片
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(cropState.cropX, cropState.cropY, cropState.cropW, cropState.cropH)
+  ctx.clip()
+  ctx.fillStyle = '#1a1a1a'
+  ctx.fillRect(cropState.cropX, cropState.cropY, cropState.cropW, cropState.cropH)
+  ctx.translate(cx, cy)
+  ctx.rotate((cropState.rotate * Math.PI) / 180)
+  ctx.scale(cropState.scale, cropState.scale)
+  ctx.drawImage(originalImage.value, -originalImage.value.width / 2, -originalImage.value.height / 2)
+  ctx.restore()
+
+  // 绘制裁剪框边框
+  ctx.strokeStyle = '#409EFF'
+  ctx.lineWidth = 2
+  ctx.strokeRect(cropState.cropX, cropState.cropY, cropState.cropW, cropState.cropH)
+
+  // 绘制网格线（九宫格辅助线）
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+  ctx.lineWidth = 1
+  for (let i = 1; i < 3; i++) {
+    ctx.beginPath()
+    ctx.moveTo(cropState.cropX + (cropState.cropW / 3) * i, cropState.cropY)
+    ctx.lineTo(cropState.cropX + (cropState.cropW / 3) * i, cropState.cropY + cropState.cropH)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(cropState.cropX, cropState.cropY + (cropState.cropH / 3) * i)
+    ctx.lineTo(cropState.cropX + cropState.cropW, cropState.cropY + (cropState.cropH / 3) * i)
+    ctx.stroke()
+  }
+
+  // 绘制8个调整手柄
+  ctx.fillStyle = '#409EFF'
+  const handles = getCropHandles()
+  handles.forEach(h => {
+    ctx.fillRect(h.x - 4, h.y - 4, 8, 8)
+  })
+
+  // 更新预览
+  updatePreview()
+}
+
+// 获取裁剪框8个手柄位置
+const getCropHandles = () => {
+  const { cropX, cropY, cropW, cropH } = cropState
+  return [
+    { x: cropX, y: cropY },
+    { x: cropX + cropW / 2, y: cropY },
+    { x: cropX + cropW, y: cropY },
+    { x: cropX, y: cropY + cropH / 2 },
+    { x: cropX + cropW, y: cropY + cropH / 2 },
+    { x: cropX, y: cropY + cropH },
+    { x: cropX + cropW / 2, y: cropY + cropH },
+    { x: cropX + cropW, y: cropY + cropH }
+  ]
+}
+
+// 判断点在裁剪框内
+const isPointInCrop = (x, y) => {
+  return x >= cropState.cropX && x <= cropState.cropX + cropState.cropW &&
+         y >= cropState.cropY && y <= cropState.cropY + cropState.cropH
+}
+
+// 鼠标按下 - 开始拖拽
+const onCropStart = (e) => {
+  const rect = cropCanvas.value.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+
+  if (isPointInCrop(x, y)) {
+    cropState.isDragging = true
+    cropState.dragStartX = x - cropState.cropX
+    cropState.dragStartY = y - cropState.cropY
+    cropCanvas.value.style.cursor = 'move'
+  }
+}
+
+// 鼠标移动 - 拖拽中
+const onCropMove = (e) => {
+  if (!cropState.isDragging) return
+  const rect = cropCanvas.value.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+
+  // 移动裁剪框，限制在canvas范围内
+  cropState.cropX = Math.max(0, Math.min(x - cropState.dragStartX, cropState.canvasW - cropState.cropW))
+  cropState.cropY = Math.max(0, Math.min(y - cropState.dragStartY, cropState.canvasH - cropState.cropH))
+
+  drawCropCanvas()
+}
+
+// 鼠标抬起 - 结束拖拽
+const onCropEnd = () => {
+  cropState.isDragging = false
+  if (cropCanvas.value) {
+    cropCanvas.value.style.cursor = 'crosshair'
+  }
+}
+
+// 滚轮缩放
+const onWheel = (e) => {
+  const delta = e.deltaY > 0 ? 0.9 : 1.1
+  const newScale = cropState.scale * delta
+  // 限制缩放范围
+  if (newScale > 0.1 && newScale < 10) {
+    // 以canvas中心为缩放原点
+    const centerX = cropState.canvasW / 2
+    const centerY = cropState.canvasH / 2
+    cropState.imgX = centerX - (centerX - cropState.imgX) * delta
+    cropState.imgY = centerY - (centerY - cropState.imgY) * delta
+    cropState.scale = newScale
+    drawCropCanvas()
+  }
+}
+
+// 放大
+const zoomIn = () => {
+  const newScale = cropState.scale * 1.2
+  if (newScale < 10) {
+    const centerX = cropState.canvasW / 2
+    const centerY = cropState.canvasH / 2
+    cropState.imgX = centerX - (centerX - cropState.imgX) * 1.2
+    cropState.imgY = centerY - (centerY - cropState.imgY) * 1.2
+    cropState.scale = newScale
+    drawCropCanvas()
+  }
+}
+
+// 缩小
+const zoomOut = () => {
+  const newScale = cropState.scale * 0.8
+  if (newScale > 0.1) {
+    const centerX = cropState.canvasW / 2
+    const centerY = cropState.canvasH / 2
+    cropState.imgX = centerX - (centerX - cropState.imgX) * 0.8
+    cropState.imgY = centerY - (centerY - cropState.imgY) * 0.8
+    cropState.scale = newScale
+    drawCropCanvas()
+  }
+}
+
+// 旋转图片
+const rotateImage = () => {
+  cropState.rotate = (cropState.rotate + 90) % 360
+  drawCropCanvas()
+}
+
+// 重置裁剪
+const resetCrop = () => {
+  if (!originalImage.value) return
+  const fitScale = Math.min(
+    cropState.canvasW / originalImage.value.width,
+    cropState.canvasH / originalImage.value.height
+  ) * 0.8
+  cropState.scale = fitScale
+  cropState.imgX = (cropState.canvasW - originalImage.value.width * fitScale) / 2
+  cropState.imgY = (cropState.canvasH - originalImage.value.height * fitScale) / 2
+  cropState.rotate = 0
+  cropState.cropW = 200
+  cropState.cropH = 200
+  cropState.cropX = (cropState.canvasW - cropState.cropW) / 2
+  cropState.cropY = (cropState.canvasH - cropState.cropH) / 2
+  drawCropCanvas()
+}
+
+// 更新预览
+const updatePreview = () => {
+  const pCanvas = previewCanvas.value
+  if (!pCanvas) return
+  const pCtx = pCanvas.getContext('2d')
+  pCtx.clearRect(0, 0, 120, 120)
+
+  // 计算裁剪框对应的原图区域
+  const img = originalImage.value
+  if (!img) return
+
+  // 计算图片在canvas中的实际显示区域（考虑旋转）
+  const cx = cropState.imgX + (img.width * cropState.scale) / 2
+  const cy = cropState.imgY + (img.height * cropState.scale) / 2
+
+  // 将裁剪框坐标转换回原图坐标
+  // 需要逆向变换：先平移到图片中心，再逆向旋转，再逆向缩放
+  const srcX = (cropState.cropX - cx) / cropState.scale + img.width / 2
+  const srcY = (cropState.cropY - cy) / cropState.scale + img.height / 2
+  const srcW = cropState.cropW / cropState.scale
+  const srcH = cropState.cropH / cropState.scale
+
   try {
+    pCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 120, 120)
+  } catch (e) {
+    // 忽略绘制错误
+  }
+}
+
+// 关闭裁剪对话框
+const onCropDialogClose = () => {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  originalFile.value = null
+  originalImage.value = null
+}
+
+// 确认裁剪并上传
+const handleCropConfirm = async () => {
+  if (!originalFile.value || !originalImage.value) return
+
+  uploading.value = true
+  try {
+    const img = originalImage.value
+    const targetSize = 300
+
+    // 计算裁剪框对应的原图区域
+    const cx = cropState.imgX + (img.width * cropState.scale) / 2
+    const cy = cropState.imgY + (img.height * cropState.scale) / 2
+    const srcX = (cropState.cropX - cx) / cropState.scale + img.width / 2
+    const srcY = (cropState.cropY - cy) / cropState.scale + img.height / 2
+    const srcW = cropState.cropW / cropState.scale
+    const srcH = cropState.cropH / cropState.scale
+
+    // 确保裁剪区域在图片范围内
+    const sx = Math.max(0, srcX)
+    const sy = Math.max(0, srcY)
+    const sw = Math.min(srcW, img.width - sx)
+    const sh = Math.min(srcH, img.height - sy)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = targetSize
+    canvas.height = targetSize
+    const ctx = canvas.getContext('2d')
+
+    // 处理旋转
+    if (cropState.rotate > 0) {
+      ctx.translate(targetSize / 2, targetSize / 2)
+      ctx.rotate((cropState.rotate * Math.PI) / 180)
+      ctx.translate(-targetSize / 2, -targetSize / 2)
+    }
+
+    // 绘制裁剪后的图片
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetSize, targetSize)
+
+    // 转换为Blob
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+    })
+
+    if (!blob) {
+      ElMessage.error('图片处理失败')
+      return
+    }
+
+    // 创建裁剪后的文件
+    const croppedFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', croppedFile)
+
     const res = await uploadAvatar(formData)
     if (res.code === 200) {
       ElMessage.success('头像上传成功')
-      // 重新获取用户信息
+      showCropDialog.value = false
       await userStore.fetchUserInfo()
     } else {
       ElMessage.error(res.message || '上传失败')
     }
   } catch (e) {
+    // 静默处理
     ElMessage.error('头像上传失败')
+  } finally {
+    uploading.value = false
   }
-
-  // 清空input，允许重复选择同一文件
-  event.target.value = ''
 }
 
 // 获取角色类型
 const getRoleType = (role) => {
   if (role === 'admin') return 'danger'
-  if (role === 'teacher') return 'warning'
+  if (role === 'counselor') return 'success'
   return 'primary'
 }
 
 // 获取角色名称
 const getRoleName = (role) => {
   if (role === 'admin') return '管理员'
-  if (role === 'teacher') return '教师'
+  if (role === 'counselor') return '辅导员'
   return '学生'
 }
 
@@ -287,7 +696,7 @@ const handleUpdateInfo = async () => {
           await userStore.fetchUserInfo()
         }
       } catch (error) {
-        console.error('更新失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -316,7 +725,7 @@ const handleChangePassword = async () => {
           }, 1500)
         }
       } catch (error) {
-        console.error('修改密码失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -411,6 +820,81 @@ onMounted(() => {
 
 .avatar-badge:hover {
   transform: scale(1.1);
+}
+
+/* 头像裁剪对话框 */
+.crop-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.crop-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+.crop-canvas {
+  width: 100%;
+  max-width: 500px;
+  height: 400px;
+  border: 2px solid #dcdfe6;
+  border-radius: 8px;
+  cursor: crosshair;
+  display: block;
+  background: #1a1a1a;
+}
+
+.crop-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 12px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.crop-hint :deep(.el-text) {
+  color: #fff !important;
+}
+
+.crop-preview-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.crop-preview-label {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.crop-preview-box {
+  width: 120px;
+  height: 120px;
+  border: 2px solid #409EFF;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.crop-preview-canvas {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.crop-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .username {

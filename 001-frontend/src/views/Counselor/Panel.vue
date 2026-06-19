@@ -275,7 +275,7 @@ const fetchCounselorInfo = async () => {
   try {
     const res = await getMyCounselorInfo()
     if (res.code === 200) counselorInfo.value = res.data
-  } catch (e) { console.error(e) }
+  } catch (e) { /* 静默处理 */ }
 }
 
 const fetchStudents = async () => {
@@ -291,14 +291,14 @@ const fetchStudents = async () => {
       studentPage.total = res.data?.total || 0
       studentTotal.value = res.data?.total || 0
     }
-  } catch (e) { console.error(e) } finally { studentLoading.value = false }
+  } catch (e) { /* 静默处理 */ } finally { studentLoading.value = false }
 }
 
 const fetchAllStudents = async () => {
   try {
     const res = await getAllMyStudents()
     if (res.code === 200) allStudents.value = res.data || []
-  } catch (e) { console.error(e) }
+  } catch (e) { /* 静默处理 */ }
 }
 
 const fetchLeaves = async () => {
@@ -309,7 +309,7 @@ const fetchLeaves = async () => {
       leaveList.value = res.data?.records || []
       pendingLeaves.value = leaveList.value.filter(l => l.status === 0).length
     }
-  } catch (e) { console.error(e) } finally { leaveLoading.value = false }
+  } catch (e) { /* 静默处理 */ } finally { leaveLoading.value = false }
 }
 
 const handleApprove = async (id, status) => {
@@ -332,7 +332,7 @@ const fetchCourses = async () => {
       courseList.value = res.data?.records || []
       openCourses.value = courseList.value.filter(c => c.isOpen === 1).length
     }
-  } catch (e) { console.error(e) } finally { courseLoading.value = false }
+  } catch (e) { /* 静默处理 */ } finally { courseLoading.value = false }
 }
 
 const handleOpenCourse = async (id) => {
@@ -376,7 +376,7 @@ const fetchScores = async () => {
       scorePage.total = res.data?.total || 0
       scoreCount.value = res.data?.total || 0
     }
-  } catch (e) { console.error(e) } finally { scoreLoading.value = false }
+  } catch (e) { /* 静默处理 */ } finally { scoreLoading.value = false }
 }
 
 const handleAddScore = async () => {

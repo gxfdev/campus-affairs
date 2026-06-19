@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.util.Map;
+
 /**
  * 用户Service实现类
  * @author xiaou
@@ -44,7 +46,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     
     @Override
     public void register(User user) {
-        // 检查用户名是否存在
+        // 检查用户名是否存在（未删除的记录）
         User existUser = getUserByUsername(user.getUsername());
         if (existUser != null) {
             throw new BusinessException("用户名已存在");
@@ -57,6 +59,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 默认角色为学生
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("student");
+        }
+        
+        // 检查是否有同名的软删除记录（username有唯一约束，软删除记录会导致插入失败）
+        UserMapper userMapper = (UserMapper) baseMapper;
+        User softDeletedUser = userMapper.selectSoftDeletedByUsername(user.getUsername());
+        if (softDeletedUser != null) {
+            // 物理删除软删除记录，然后插入新记录
+            userMapper.physicalDeleteSoftDeletedByUsername(user.getUsername());
         }
         
         // 保存用户
@@ -87,10 +97,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.and(w -> w.like(User::getUsername, keyword)
                     .or().like(User::getRealName, keyword)
-                    .or().like(User::getPhone, keyword));
+                    .or().like(User::getPhone, keyword)
+                    .or().like(User::getStudentNo, keyword));
         }
         
         wrapper.orderByDesc(User::getCreateTime);
+        return page(page, wrapper);
+    }
+    
+    @Override
+    public Page<User> getUserPage(int pageNum, int pageSize, Map<String, Object> params) {
+        Page<User> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        
+        String role = (String) params.get("role");
+        if (role != null && !role.isEmpty()) {
+            wrapper.eq(User::getRole, role);
+        }
+        
+        String keyword = (String) params.get("keyword");
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.and(w -> w.like(User::getUsername, keyword)
+                    .or().like(User::getRealName, keyword)
+                    .or().like(User::getPhone, keyword)
+                    .or().like(User::getStudentNo, keyword));
+        }
+        
+        String studentNo = (String) params.get("studentNo");
+        if (studentNo != null && !studentNo.isEmpty()) {
+            wrapper.like(User::getStudentNo, studentNo);
+        }
+        
+        String className = (String) params.get("className");
+        if (className != null && !className.isEmpty()) {
+            wrapper.like(User::getClassName, className);
+        }
+        
+        String college = (String) params.get("college");
+        if (college != null && !college.isEmpty()) {
+            wrapper.eq(User::getCollege, college);
+        }
+        
+        String major = (String) params.get("major");
+        if (major != null && !major.isEmpty()) {
+            wrapper.like(User::getMajor, major);
+        }
+        
+        Object gradeObj = params.get("grade");
+        if (gradeObj != null && !gradeObj.toString().isEmpty()) {
+            wrapper.eq(User::getGrade, Integer.parseInt(gradeObj.toString()));
+        }
+        
+        wrapper.orderByAsc(User::getCollege, User::getClassName, User::getStudentNo);
         return page(page, wrapper);
     }
     

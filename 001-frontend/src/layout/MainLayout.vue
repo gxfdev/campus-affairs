@@ -61,6 +61,13 @@
         </div>
         
         <div class="header-right">
+          <!-- 数据同步状态 -->
+          <el-tooltip :content="syncTooltip" placement="bottom">
+            <el-button class="sync-btn" circle @click="handleSync" :loading="syncStatus === 'syncing'">
+              <el-icon :size="18"><Refresh /></el-icon>
+            </el-button>
+          </el-tooltip>
+          
           <!-- 通知图标 -->
           <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0" class="notification-badge">
             <el-button class="notification-btn" circle @click="showNotifications">
@@ -97,8 +104,8 @@
           <!-- 用户信息 -->
           <el-dropdown @command="handleCommand" class="user-dropdown">
             <div class="user-info">
-              <el-avatar :size="36" class="user-avatar">
-                {{ userInfo?.username?.charAt(0) }}
+              <el-avatar :size="36" class="user-avatar" :src="userInfo?.avatar || undefined">
+                <template v-if="!userInfo?.avatar">{{ userInfo?.username?.charAt(0) }}</template>
               </el-avatar>
               <div class="user-detail">
                 <span class="username">{{ userInfo?.username }}</span>
@@ -140,10 +147,28 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { getUnreadCount, getUnreadNotifications, markAsRead, markAllAsRead } from '@/api/notification'
+import { useDataSync } from '@/composables/useDataSync'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// 数据同步
+const { syncStatus, lastSyncTime, syncData } = useDataSync()
+
+const syncTooltip = computed(() => {
+  if (syncStatus.value === 'syncing') return '正在同步数据...'
+  if (syncStatus.value === 'error') return '同步失败，点击重试'
+  if (lastSyncTime.value) {
+    const time = new Date(lastSyncTime.value).toLocaleTimeString()
+    return `上次同步：${time}，点击立即同步`
+  }
+  return '点击同步数据'
+})
+
+const handleSync = () => {
+  syncData(true)
+}
 
 const isCollapse = ref(false)
 const userInfo = computed(() => userStore.userInfo)
@@ -225,7 +250,6 @@ const hasPermission = (route) => {
 const getRoleName = (role) => {
   const roleMap = {
     'admin': '管理员',
-    'teacher': '教师',
     'student': '学生',
     'counselor': '辅导员'
   }
@@ -436,6 +460,20 @@ onUnmounted(() => {
 }
 
 .notification-btn:hover {
+  background: #f5f7fa !important;
+  color: #2E7D32 !important;
+}
+
+.sync-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #606266 !important;
+  width: 40px;
+  height: 40px;
+  margin-right: 8px;
+}
+
+.sync-btn:hover {
   background: #f5f7fa !important;
   color: #2E7D32 !important;
 }

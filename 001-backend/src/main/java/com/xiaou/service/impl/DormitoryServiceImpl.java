@@ -54,6 +54,9 @@ public class DormitoryServiceImpl extends ServiceImpl<DormitoryMapper, Dormitory
         if ("full".equals(dormitory.getStatus()) || dormitory.getCurrentCount() >= dormitory.getCapacity()) {
             throw new RuntimeException("宿舍已满，无法选择");
         }
+        if ("maintenance".equals(dormitory.getStatus())) {
+            throw new RuntimeException("该宿舍正在维护中，暂不可选");
+        }
         // 检查学生是否已选宿舍
         LambdaQueryWrapper<DormitorySelection> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DormitorySelection::getStudentId, studentId)
@@ -69,6 +72,10 @@ public class DormitoryServiceImpl extends ServiceImpl<DormitoryMapper, Dormitory
         // 检查性别匹配
         if (student.getGender() != null && !student.getGender().equals(dormitory.getGender())) {
             throw new RuntimeException("宿舍性别与您不匹配");
+        }
+        // 检查学院匹配
+        if (student.getCollege() != null && !student.getCollege().equals(dormitory.getCollege())) {
+            throw new RuntimeException("该宿舍仅限" + dormitory.getCollege() + "学生选择");
         }
         // 创建选择记录
         DormitorySelection selection = new DormitorySelection();

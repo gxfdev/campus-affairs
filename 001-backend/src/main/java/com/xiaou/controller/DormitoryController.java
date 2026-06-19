@@ -7,6 +7,7 @@ import com.xiaou.entity.Dormitory;
 import com.xiaou.entity.DormitorySelection;
 import com.xiaou.mapper.DormitorySelectionMapper;
 import com.xiaou.service.DormitoryService;
+import com.xiaou.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,9 @@ public class DormitoryController {
     private DormitoryService dormitoryService;
 
     @Autowired
+    private UserService userService;
+
+    @Autowired
     private DormitorySelectionMapper selectionMapper;
 
     @GetMapping("/list")
@@ -29,7 +33,19 @@ public class DormitoryController {
             @RequestParam(required = false) String building,
             @RequestParam(required = false) String gender,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String college) {
+            @RequestParam(required = false) String college,
+            HttpServletRequest request) {
+        // 学生只能看到本学院、本性别的宿舍
+        String role = (String) request.getAttribute("role");
+        if ("student".equals(role)) {
+            Long userId = (Long) request.getAttribute("userId");
+            com.xiaou.entity.User student = userService.getById(userId);
+            if (student != null) {
+                // 强制按学生学院和性别过滤
+                college = student.getCollege();
+                gender = student.getGender();
+            }
+        }
         return Result.success(dormitoryService.getDormitoryPage(pageNum, pageSize, building, gender, status, college));
     }
 

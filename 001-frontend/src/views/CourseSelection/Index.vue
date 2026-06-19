@@ -142,7 +142,7 @@ const fetchCourses = async () => {
       pagination.total = res.data?.total || 0
     }
   } catch (e) {
-    console.error('获取选课列表失败', e)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -154,7 +154,7 @@ const fetchMyCourses = async () => {
     const res = await getMyCourses()
     if (res.code === 200) myCoursesList.value = res.data || []
   } catch (e) {
-    console.error('获取我的选课失败', e)
+    // 静默处理
   } finally {
     myLoading.value = false
   }

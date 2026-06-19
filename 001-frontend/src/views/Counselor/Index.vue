@@ -124,7 +124,7 @@ const fetchCounselors = async () => {
       pagination.total = res.data?.total || 0
     }
   } catch (e) {
-    console.error('获取辅导员列表失败', e)
+    // 静默处理
   } finally {
     loading.value = false
   }

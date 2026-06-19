@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,11 +37,8 @@ public class ScoreServiceImpl extends ServiceImpl<ScoreMapper, Score> implements
         }
         wrapper.orderByDesc(Score::getCreateTime);
         Page<Score> result = this.page(page, wrapper);
-        // 填充学生信息
-        result.getRecords().forEach(s -> {
-            User student = userMapper.selectById(s.getStudentId());
-            s.setStudent(student);
-        });
+        // 批量填充学生信息，避免N+1查询
+        fillStudentInfo(result);
         return result;
     }
 
@@ -67,11 +65,25 @@ public class ScoreServiceImpl extends ServiceImpl<ScoreMapper, Score> implements
         }
         wrapper.orderByDesc(Score::getCreateTime);
         Page<Score> result = this.page(page, wrapper);
-        // 填充学生信息
-        result.getRecords().forEach(s -> {
-            User student = userMapper.selectById(s.getStudentId());
-            s.setStudent(student);
-        });
+        // 批量填充学生信息，避免N+1查询
+        fillStudentInfo(result);
         return result;
+    }
+
+    /**
+     * 批量填充学生信息，避免N+1查询
+     */
+    private void fillStudentInfo(Page<Score> result) {
+        if (result.getRecords().isEmpty()) {
+            return;
+        }
+        List<Long> studentIds = result.getRecords().stream()
+                .map(Score::getStudentId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<User> students = userMapper.selectBatchIds(studentIds);
+        Map<Long, User> userMap = students.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        result.getRecords().forEach(s -> s.setStudent(userMap.get(s.getStudentId())));
     }
 }

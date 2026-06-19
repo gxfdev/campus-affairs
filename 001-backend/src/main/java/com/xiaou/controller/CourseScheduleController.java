@@ -35,8 +35,36 @@ public class CourseScheduleController {
     @GetMapping("/class/{className}")
     public Result<List<CourseSchedule>> getByClass(
             @PathVariable String className,
-            @RequestParam(required = false) String semester) {
-        return Result.success(courseScheduleService.getScheduleByClass(className, semester));
+            @RequestParam(required = false) String semester,
+            @RequestParam(required = false, defaultValue = "0") int week) {
+        List<CourseSchedule> list = courseScheduleService.getScheduleByClass(className, semester);
+        // 如果指定了周次，过滤出该周有课的课程
+        if (week > 0) {
+            list = list.stream()
+                .filter(c -> c.getWeekStart() != null && c.getWeekEnd() != null
+                    && week >= c.getWeekStart() && week <= c.getWeekEnd())
+                .collect(java.util.stream.Collectors.toList());
+        }
+        return Result.success(list);
+    }
+
+    /**
+     * 获取班级所有学期列表
+     */
+    @GetMapping("/semesters/{className}")
+    public Result<List<String>> getSemesters(@PathVariable String className) {
+        LambdaQueryWrapper<CourseSchedule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseSchedule::getClassName, className);
+        wrapper.select(CourseSchedule::getSemester);
+        wrapper.groupBy(CourseSchedule::getSemester);
+        wrapper.orderByDesc(CourseSchedule::getSemester);
+        List<CourseSchedule> list = courseScheduleService.list(wrapper);
+        List<String> semesters = list.stream()
+            .map(CourseSchedule::getSemester)
+            .distinct()
+            .sorted((a, b) -> b.compareTo(a))
+            .toList();
+        return Result.success(semesters);
     }
 
     /**
@@ -76,7 +104,7 @@ public class CourseScheduleController {
         if (grade != null) {
             wrapper.eq(User::getGrade, grade);
         }
-        wrapper.select(User::getClassName).groupBy(User::getClassName);
+        wrapper.isNotNull(User::getClassName).ne(User::getClassName, "");
         List<User> users = userService.list(wrapper);
         List<String> classes = users.stream()
             .map(User::getClassName)
@@ -98,7 +126,7 @@ public class CourseScheduleController {
         if (college != null && !college.isEmpty()) {
             wrapper.eq(User::getCollege, college);
         }
-        wrapper.select(User::getMajor).groupBy(User::getMajor);
+        wrapper.isNotNull(User::getMajor).ne(User::getMajor, "");
         List<User> users = userService.list(wrapper);
         List<String> majors = users.stream()
             .map(User::getMajor)
@@ -116,7 +144,7 @@ public class CourseScheduleController {
     public Result<List<String>> getColleges() {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getRole, "student");
-        wrapper.select(User::getCollege).groupBy(User::getCollege);
+        wrapper.isNotNull(User::getCollege).ne(User::getCollege, "");
         List<User> users = userService.list(wrapper);
         List<String> colleges = users.stream()
             .map(User::getCollege)
@@ -133,6 +161,47 @@ public class CourseScheduleController {
         if (!"admin".equals(role) && !"counselor".equals(role)) {
             return Result.error(403, "权限不足");
         }
+        // 参数校验
+        if (schedule.getClassName() == null || schedule.getClassName().trim().isEmpty()) {
+            return Result.error(400, "班级名称不能为空");
+        }
+        if (schedule.getCourseName() == null || schedule.getCourseName().trim().isEmpty()) {
+            return Result.error(400, "课程名称不能为空");
+        }
+        if (schedule.getDayOfWeek() == null || schedule.getDayOfWeek() < 1 || schedule.getDayOfWeek() > 7) {
+            return Result.error(400, "星期参数无效");
+        }
+        if (schedule.getPeriodStart() == null || schedule.getPeriodEnd() == null
+            || schedule.getPeriodStart() >= schedule.getPeriodEnd()) {
+            return Result.error(400, "节次参数无效，开始节次必须小于结束节次");
+        }
+        // 设置默认周次（整学期1-20周）
+        if (schedule.getWeekStart() == null) schedule.setWeekStart(1);
+        if (schedule.getWeekEnd() == null) schedule.setWeekEnd(20);
+        if (schedule.getWeekStart() < 1 || schedule.getWeekEnd() > 20 || schedule.getWeekStart() > schedule.getWeekEnd()) {
+            return Result.error(400, "周次参数无效");
+        }
+
+        // 检查时间冲突：同一班级、同一天、节次重叠、周次重叠
+        LambdaQueryWrapper<CourseSchedule> conflictWrapper = new LambdaQueryWrapper<>();
+        conflictWrapper.eq(CourseSchedule::getClassName, schedule.getClassName());
+        conflictWrapper.eq(CourseSchedule::getDayOfWeek, schedule.getDayOfWeek());
+        conflictWrapper.eq(CourseSchedule::getDeleted, 0);
+        if (schedule.getSemester() != null) {
+            conflictWrapper.eq(CourseSchedule::getSemester, schedule.getSemester());
+        }
+        // 节次重叠：newStart < existingEnd AND newEnd > existingStart
+        conflictWrapper.lt(CourseSchedule::getPeriodStart, schedule.getPeriodEnd());
+        conflictWrapper.gt(CourseSchedule::getPeriodEnd, schedule.getPeriodStart());
+        // 周次重叠：newWeekStart <= existingWeekEnd AND newWeekEnd >= existingWeekStart
+        conflictWrapper.le(CourseSchedule::getWeekStart, schedule.getWeekEnd());
+        conflictWrapper.ge(CourseSchedule::getWeekEnd, schedule.getWeekStart());
+
+        long conflictCount = courseScheduleService.count(conflictWrapper);
+        if (conflictCount > 0) {
+            return Result.error(400, "时间冲突：该时段已有其他课程，请检查课表");
+        }
+
         courseScheduleService.save(schedule);
         return Result.success();
     }

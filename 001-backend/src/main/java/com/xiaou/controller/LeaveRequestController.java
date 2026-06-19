@@ -47,8 +47,12 @@ public class LeaveRequestController {
         }
         
         leaveRequest.setStudentId(userId);
-        leaveRequestService.submitLeaveRequest(leaveRequest);
-        return Result.success();
+        try {
+            leaveRequestService.submitLeaveRequest(leaveRequest);
+            return Result.success();
+        } catch (com.xiaou.common.BusinessException e) {
+            return Result.error(400, e.getMessage());
+        }
     }
     
     /**
@@ -93,8 +97,8 @@ public class LeaveRequestController {
         Long approverId = (Long) httpRequest.getAttribute("userId");
         String role = (String) httpRequest.getAttribute("role");
         
-        // 只有辅导员可以审批请假
-        if (!"counselor".equals(role)) {
+        // 只有辅导员和管理员可以审批请假
+        if (!"counselor".equals(role) && !"admin".equals(role)) {
             return Result.error(403, "只有辅导员可以审批请假申请");
         }
         
@@ -110,13 +114,15 @@ public class LeaveRequestController {
             return Result.error(404, "学生不存在");
         }
         
-        // 获取审批辅导员信息，验证是否为该学生的专属辅导员
-        Counselor counselor = counselorService.getByUserId(approverId);
-        if (counselor == null) {
-            return Result.error(403, "辅导员信息不存在");
-        }
-        if (!counselor.getId().equals(student.getCounselorId())) {
-            return Result.error(403, "您没有权限审批该学生的请假申请，只有该学生的专属辅导员才能审批");
+        // 管理员可以审批所有请假申请，辅导员只能审批自己负责的学生
+        if ("counselor".equals(role)) {
+            Counselor counselor = counselorService.getByUserId(approverId);
+            if (counselor == null) {
+                return Result.error(403, "辅导员信息不存在");
+            }
+            if (!counselor.getId().equals(student.getCounselorId())) {
+                return Result.error(403, "您没有权限审批该学生的请假申请，只有该学生的专属辅导员才能审批");
+            }
         }
         
         leaveRequestService.approveLeaveRequest(request.getId(), approverId, 

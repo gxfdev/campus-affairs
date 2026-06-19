@@ -225,7 +225,7 @@ const fetchLeaveList = async () => {
       pagination.total = res.data.total || res.data?.total || 0
     }
   } catch (error) {
-    console.error('获取请假列表失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -253,7 +253,7 @@ const handleApply = async () => {
           fetchLeaveList()
         }
       } catch (error) {
-        console.error('提交失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -277,7 +277,7 @@ const handleApprove = async (id, status) => {
         fetchLeaveList()
       }
     } catch (error) {
-      console.error('审批失败:', error)
+      // 静默处理
     }
   }).catch(() => {})
 }

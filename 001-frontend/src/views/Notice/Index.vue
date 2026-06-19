@@ -234,7 +234,7 @@ const fetchNoticeList = async () => {
       pagination.total = res.data.total || 0
     }
   } catch (error) {
-    console.error('获取公告列表失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -272,7 +272,7 @@ const handleSubmit = async () => {
           fetchNoticeList()
         }
       } catch (error) {
-        console.error('操作失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -303,7 +303,7 @@ const handleDelete = async (id) => {
         fetchNoticeList()
       }
     } catch (error) {
-      console.error('删除失败:', error)
+      // 静默处理
     }
   }).catch(() => {})
 }
@@ -317,7 +317,7 @@ const handleToggleTop = async (id) => {
       fetchNoticeList()
     }
   } catch (error) {
-    console.error('操作失败:', error)
+    // 静默处理
   }
 }
 

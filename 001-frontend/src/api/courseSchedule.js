@@ -6,8 +6,15 @@ export const getCourseScheduleList = (params) => {
 }
 
 // 根据班级获取课程表
-export const getScheduleByClass = (className, semester) => {
-  return request.get(`/course-schedule/class/${className}`, { params: { semester } })
+export const getScheduleByClass = (className, semester, week) => {
+  const params = { semester }
+  if (week && week > 0) params.week = week
+  return request.get(`/course-schedule/class/${className}`, { params })
+}
+
+// 获取班级所有学期列表
+export const getSemesters = (className) => {
+  return request.get(`/course-schedule/semesters/${className}`)
 }
 
 // 学生获取自己的课程表

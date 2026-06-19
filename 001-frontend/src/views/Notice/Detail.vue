@@ -72,7 +72,7 @@ const fetchNoticeDetail = async () => {
       notice.value = res.data
     }
   } catch (error) {
-    console.error('获取公告详情失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }

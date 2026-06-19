@@ -276,7 +276,7 @@ const fetchActivityList = async () => {
       pagination.total = res.data.total || 0
     }
   } catch (error) {
-    console.error('获取活动列表失败:', error)
+    // 静默处理
   } finally {
     loading.value = false
   }
@@ -314,7 +314,7 @@ const handleSubmit = async () => {
           fetchActivityList()
         }
       } catch (error) {
-        console.error('操作失败:', error)
+        // 静默处理
       } finally {
         submitting.value = false
       }
@@ -351,7 +351,7 @@ const handleDelete = async (id) => {
         fetchActivityList()
       }
     } catch (error) {
-      console.error('删除失败:', error)
+      // 静默处理
     }
   }).catch(() => {})
 }
